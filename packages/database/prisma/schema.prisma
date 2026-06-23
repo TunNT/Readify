@@ -1,0 +1,299 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AssetProvider {
+  LOCAL
+  S3
+}
+
+enum NovelStatus {
+  ONGOING
+  COMPLETED
+  HIATUS
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  ADS_MANAGER
+  READER
+}
+
+enum AdScope {
+  GLOBAL
+  PAGE_TYPE
+  SPECIFIC_PAGE
+}
+
+enum AdLocation {
+  HEAD
+  OPEN_BODY
+  CLOSE_BODY
+  TOP
+  BOTTOM
+  INLINE
+}
+
+enum AdCodeType {
+  HTML
+  INLINE_JS
+  EXTERNAL_SCRIPT
+}
+
+enum AdDevice {
+  ALL
+  DESKTOP
+  MOBILE
+}
+
+model Asset {
+  id          String        @id @default(cuid())
+  provider    AssetProvider @default(LOCAL)
+  originalUrl String?
+  localPath   String?
+  storageKey  String?
+  publicUrl   String?
+  contentType String?
+  byteSize    Int?
+  width       Int?
+  height      Int?
+  checksum    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  coverNovels Novel[]       @relation("NovelCover")
+
+  @@unique([originalUrl])
+  @@index([provider])
+}
+
+model Novel {
+  id                 String           @id @default(cuid())
+  slug               String           @unique
+  title              String
+  description        String           @default("")
+  authorName         String?
+  status             NovelStatus      @default(ONGOING)
+  sourceUrl          String?          @unique
+  coverAssetId       String?
+  coverAsset         Asset?           @relation("NovelCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
+  categories         NovelCategory[]
+  tags               NovelTag[]
+  chapters           Chapter[]
+  rankings           Ranking[]
+  readingHistory     ReadingHistory[]
+  libraryItems       LibraryItem[]
+  viewCount          Int              @default(0)
+  ratingAverage      Decimal          @default(0) @db.Decimal(3, 2)
+  ratingCount        Int              @default(0)
+  publishedAt        DateTime?
+  sourceCreatedAt    DateTime?
+  sourceUpdatedAt    DateTime?
+  sourceChapterCount Int              @default(0)
+  sourceImportedAt   DateTime?
+  isPublished        Boolean          @default(true)
+  deletedAt          DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([title])
+  @@index([status])
+  @@index([isPublished, deletedAt])
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  slug      String     @unique
+  name      String
+  novels    NovelTag[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model NovelTag {
+  novelId String
+  tagId   String
+  novel   Novel @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  tag     Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([novelId, tagId])
+}
+
+model Category {
+  id        String          @id @default(cuid())
+  slug      String          @unique
+  name      String
+  icon      String?
+  sourceUrl String?
+  novels    NovelCategory[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model NovelCategory {
+  novelId    String
+  categoryId String
+  novel      Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([novelId, categoryId])
+}
+
+model Chapter {
+  id               String    @id @default(cuid())
+  novelId          String
+  novel            Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  number           Int
+  slug             String
+  title            String
+  content          String    @db.Text
+  excerpt          String    @default("")
+  sourceUrl        String?   @unique
+  sourceCreatedAt  DateTime?
+  sourceImportedAt DateTime?
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([novelId, number])
+  @@unique([novelId, slug])
+  @@index([publishedAt])
+}
+
+model ContentPage {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  contentHtml String   @db.Text
+  sourceUrl   String   @unique
+  importedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Ranking {
+  id        String   @id @default(cuid())
+  novelId   String
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  listKey   String
+  position  Int
+  label     String?
+  createdAt DateTime @default(now())
+
+  @@unique([listKey, position])
+  @@index([listKey])
+}
+
+model User {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  displayName    String
+  passwordHash   String?
+  role           UserRole         @default(EDITOR)
+  isActive       Boolean          @default(true)
+  lastLoginAt    DateTime?
+  readingHistory ReadingHistory[]
+  libraryItems   LibraryItem[]
+  adminSessions  AdminSession[]
+  readerSessions ReaderSession[]
+  auditLogs      AuditLog[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model ReaderSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LibraryItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId   String
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  savedAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([userId, novelId])
+  @@index([userId, savedAt])
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model AdPlacement {
+  id            String     @id @default(cuid())
+  name          String
+  key           String     @unique
+  scope         AdScope    @default(GLOBAL)
+  scopeValue    String?
+  location      AdLocation
+  codeType      AdCodeType
+  code          String     @db.Text
+  device        AdDevice   @default(ALL)
+  wordInterval  Int?
+  maxInsertions Int?
+  priority      Int        @default(0)
+  isEnabled     Boolean    @default(false)
+  startsAt      DateTime?
+  endsAt        DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([scope, scopeValue])
+  @@index([location, isEnabled])
+}
+
+model ReadingHistory {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?
+  novelId   String
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  chapterId String?
+  progress  Decimal  @default(0) @db.Decimal(5, 2)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+}

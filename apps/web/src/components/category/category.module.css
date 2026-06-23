@@ -1,0 +1,46 @@
+.page { --category-primary:#c0396b; --category-secondary:#7c5cbf; --category-background:#f7f4fb; --category-card:#fff; --category-text:#1a1a2e; --category-light:#6b7280; --category-shadow:rgba(124,92,191,.1); --category-hover:rgba(124,92,191,.2); --category-footer:#1a1a2e; --category-footer-text:#e8e8f0; --category-border:#ede8f5; background:var(--category-background); color:var(--category-text); line-height:1.6; min-height:100vh; padding-top:70px; }
+.page * { font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif; }
+.navbar { align-items:center; background:#fff; border-bottom:2px solid var(--category-border); box-shadow:0 2px 12px rgba(124,92,191,.12); display:flex; justify-content:space-between; left:0; padding:12px 5%; position:fixed; top:0; width:100%; z-index:1000; }
+.logo { color:var(--category-primary); font-size:25.6px; font-weight:800; }
+.logo span { color:var(--category-secondary); }
+.navLinks { display:flex; gap:20px; }
+.navLinks a { color:var(--category-text); font-size:14.4px; font-weight:500; transition:color .3s; }
+.navLinks a:hover { color:var(--category-primary); }
+.pageHeader { background:linear-gradient(135deg,#7c5cbf 0%,#c0396b 65%,#ff9f43 100%); color:#fff; padding:48px 5% 40px; text-align:center; }
+.pageHeader h1 { align-items:center; display:flex; font-size:35.2px; font-weight:800; gap:10px; justify-content:center; margin:0 0 12px; }
+.pageHeader p { font-size:16px; font-weight:400; line-height:1.7; margin:0 auto 18px; max-width:600px; opacity:.9; }
+.novelCount { background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.3); border-radius:20px; display:inline-block; font-size:14.4px; font-weight:600; padding:6px 18px; }
+.container { margin:0 auto; max-width:1200px; padding:30px 15px; }
+.breadcrumb { color:var(--category-light); font-size:13.6px; font-weight:400; margin-bottom:20px; }
+.breadcrumb a { align-items:center; color:var(--category-secondary); display:inline-flex; gap:4px; }
+.breadcrumb a:hover { color:var(--category-primary); }
+.cardsGrid { display:grid; gap:20px; grid-template-columns:repeat(auto-fill,minmax(185px,1fr)); }
+.novelCard { background:#fff; border:1px solid var(--category-border); border-radius:12px; box-shadow:0 2px 12px var(--category-shadow); display:flex; flex-direction:column; min-width:0; overflow:hidden; transition:.3s; }
+.novelCard:hover { border-color:rgba(124,92,191,.3); box-shadow:0 8px 24px var(--category-hover); transform:translateY(-4px); }
+.coverContainer { background:#f0ebf8; height:240px; overflow:hidden; width:100%; }
+.coverContainer a { display:block; height:100%; }
+.novelCover { height:100%; object-fit:cover; transition:transform .3s; width:100%; }
+.novelCard:hover .novelCover { transform:scale(1.04); }
+.cardContent { display:flex; flex:1; flex-direction:column; padding:14px; }
+.novelTitle { display:-webkit-box; font-size:15.2px; font-weight:700; line-height:1.6; margin:0 0 6px; min-height:38.4px; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.novelDesc { color:var(--category-light); display:-webkit-box; flex:1; font-size:12.8px; font-weight:400; line-height:1.5; margin:0 0 10px; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
+.tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
+.tag { background:linear-gradient(135deg,rgba(124,92,191,.1),rgba(192,57,107,.08)); border:1px solid rgba(124,92,191,.2); border-radius:12px; color:var(--category-secondary); font-size:11.2px; font-weight:600; padding:3px 9px; text-transform:lowercase; }
+.cardFooter { align-items:center; display:flex; justify-content:space-between; margin-top:auto; }
+.readButton { background:linear-gradient(135deg,var(--category-secondary),var(--category-primary)); border-radius:20px; box-shadow:0 2px 8px rgba(124,92,191,.3); color:#fff; font-size:12.48px; font-weight:600; padding:7px 16px; transition:.3s; }
+.readButton:hover { box-shadow:0 4px 12px rgba(124,92,191,.45); transform:translateY(-1px); }
+.updateDate { color:var(--category-light); font-size:11.2px; font-style:italic; font-weight:400; }
+.footer { background:var(--category-footer); color:var(--category-footer-text); margin-top:40px; padding:36px 0 0; }
+.footerInner { display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; margin:0 auto; max-width:1200px; padding:0 15px 28px; }
+.footerBrand { color:#fff; font-size:22.4px; font-weight:800; margin-bottom:8px; }
+.footerBrand span { color:#bb86fc; }
+.footerDesc { font-size:13.6px; font-weight:400; line-height:1.6; margin:0; max-width:280px; opacity:.7; }
+.footerLinks h2 { color:#fff; font-size:15.2px; font-weight:700; margin:0 0 12px; }
+.footerLinks ul { list-style:none; margin:0; padding:0; }
+.footerLinks li { margin-bottom:7px; }
+.footerLinks a { color:var(--category-footer-text); font-size:13.6px; font-weight:400; opacity:.65; transition:opacity .3s; }
+.footerLinks a:hover { color:#bb86fc; opacity:1; }
+.footerBottom { border-top:1px solid rgba(255,255,255,.1); font-size:13.12px; font-weight:400; margin:0 auto; max-width:1200px; opacity:.55; padding:16px 15px; }
+@media (max-width:768px) { .pageHeader h1 { font-size:25.6px; } .cardsGrid { gap:14px; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); } .coverContainer { height:200px; } }
+@media (max-width:576px) { .cardsGrid { gap:12px; grid-template-columns:repeat(2,1fr); } .coverContainer { height:170px; } .navLinks { display:none; } .pageHeader { padding:38px 18px 32px; } .container { padding:22px 10px; } }
+@media (prefers-reduced-motion:reduce) { .page *, .page *::before, .page *::after { transition-duration:.01ms !important; } }

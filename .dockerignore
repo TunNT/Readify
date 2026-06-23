@@ -1,0 +1,10 @@
+.git
+.next
+**/.next
+**/dist
+node_modules
+**/node_modules
+.env
+storage/covers/*
+!storage/covers/.gitkeep
+!storage/covers/placeholder.svg

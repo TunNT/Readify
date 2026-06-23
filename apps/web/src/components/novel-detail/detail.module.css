@@ -1,0 +1,42 @@
+.page { background:#f5f5f7; color:#333; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Open Sans","Helvetica Neue",sans-serif; font-weight:400; line-height:1.6; min-height:100vh; padding-bottom:0; }
+.page * { font-family:inherit; }
+.header { backdrop-filter:blur(10px); background:rgba(255,255,255,.8); box-shadow:0 2px 10px rgba(0,0,0,.05); padding:15px 20px; position:sticky; top:0; z-index:100; }
+.navContainer { align-items:center; display:flex; justify-content:space-between; margin:0 auto; max-width:1200px; }
+.logo { color:#0071e3; font-size:22px; font-weight:700; }
+.navButtons { display:flex; gap:15px; }
+.navButton { align-items:center; background:#f5f5f7; border:0; border-radius:10px; color:inherit; cursor:pointer; display:flex; font-size:14px; gap:5px; padding:8px 16px; transition:.2s; }
+.navButton:hover { background:#e0e0e0; }
+.container { margin:0 auto; max-width:1200px; padding:20px; }
+.bookHeader { display:flex; flex-wrap:wrap; gap:30px; margin:30px 0; }
+.bookCover { border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.15); flex-shrink:0; height:360px; overflow:hidden; width:240px; }
+.bookCover img { height:100%; object-fit:cover; width:100%; }
+.bookInfo { flex:1; min-width:300px; }
+.bookTitle { color:#1d1d1f; font-size:32px; font-weight:700; letter-spacing:0; line-height:1.25; margin:0 0 10px; }
+.bookAuthor { color:#86868b; font-size:20px; margin:0 0 20px; }
+.bookMeta { display:flex; flex-wrap:wrap; gap:15px; margin:20px 0; }
+.metaItem { background:rgba(255,255,255,.8); border-radius:20px; box-shadow:0 2px 5px rgba(0,0,0,.05); font-size:14px; padding:8px 16px; text-transform:capitalize; }
+.descriptionText { color:#515154; line-height:1.8; margin:0 0 15px; white-space:pre-line; }
+.bookInfo .descriptionText { display:-webkit-box; max-width:760px; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:5; }
+.actionButtons { display:flex; gap:15px; margin:25px 0; }
+.primaryButton { background:#0071e3; border:0; border-radius:12px; color:#fff; cursor:pointer; display:inline-block; font-size:16px; font-weight:600; padding:12px 25px; transition:.2s; }
+.primaryButton:hover { background:#0077ed; transform:translateY(-2px); }
+.bookDescription, .chaptersContainer { background:#fff; border-radius:16px; box-shadow:0 5px 20px rgba(0,0,0,.05); margin:30px 0; padding:25px; }
+.sectionTitle { border-bottom:1px solid #f0f0f0; color:#1d1d1f; font-size:22px; font-weight:600; margin:0 0 20px; padding-bottom:10px; }
+.chaptersHeader { align-items:center; display:flex; flex-wrap:wrap; gap:15px; justify-content:space-between; margin-bottom:20px; }
+.chaptersHeader .sectionTitle { margin:0; }
+.chaptersFilter { display:flex; gap:10px; }
+.filterButton { background:#f5f5f7; border:0; border-radius:10px; color:#333; cursor:pointer; font-size:14px; padding:8px 16px; transition:.2s; }
+.filterButton.active { background:#0071e3; color:#fff; }
+.chaptersList { list-style:none; margin:0; padding:0; }
+.chapterItem { align-items:center; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; padding:18px 15px; transition:.2s; }
+.chapterItem:hover { background:#f9f9f9; }
+.chapterItem:last-child { border-bottom:0; }
+.chapterLink { align-items:center; color:inherit; display:flex; justify-content:space-between; width:100%; }
+.chapterTitle { color:#1d1d1f; font-size:16px; }
+.chapterDate { color:#86868b; font-size:14px; }
+.bottomNav { backdrop-filter:blur(10px); background:rgba(255,255,255,.9); bottom:0; box-shadow:0 -2px 10px rgba(0,0,0,.1); display:none; left:0; padding:15px; position:fixed; right:0; z-index:100; }
+.bottomNavButtons { display:flex; justify-content:space-around; }
+.bottomNavButton { align-items:center; color:#86868b; display:flex; flex-direction:column; font-size:12px; gap:5px; }
+.bottomNavButton.active { color:#0071e3; }
+@media (max-width:768px) { .bookHeader { align-items:center; flex-direction:column; text-align:center; } .bookCover { height:300px; width:200px; } .bookInfo { min-width:0; width:100%; } .bookMeta { justify-content:center; } .actionButtons { flex-direction:column; } .chaptersHeader { align-items:flex-start; flex-direction:column; } .chaptersFilter { overflow-x:auto; padding-bottom:10px; width:100%; } .navButtons { gap:8px; } .navButton { font-size:13px; padding:6px 12px; } }
+@media (max-width:640px) { .page { padding-bottom:70px; } .bottomNav { display:block; } .header { padding:12px; } .navButtons .navButton:nth-child(2), .navButtons:last-child .navButton { display:none; } .logo { font-size:19px; } .container { padding:15px; } .chaptersContainer, .bookDescription { border-radius:12px; padding:18px; } .chapterItem { padding:15px 5px; } }

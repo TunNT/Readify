@@ -1,0 +1,5 @@
+.region { width:100%; }
+.slot { align-items:center; display:flex; justify-content:center; max-width:100%; overflow:hidden; }
+.contentSegment { display:contents; }
+.mobile { display:none; }
+@media (max-width:768px) { .desktop { display:none; } .mobile { display:flex; } }
