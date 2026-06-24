@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Novel } from "../../lib/types";
+import Link from "next/link";
+import { proxiedCoverUrl } from "../../lib/api";
 import { clearStoredNovels, getStoredNovels, historyKey, libraryChangedEvent, type StoredNovel } from "../library-actions";
-import { HomeNovelCard } from "./home-novel-card";
 import styles from "./home.module.css";
 
-function toNovel(item: StoredNovel): Novel {
-  return { ...item, id: item.slug, description: "Continue reading where you left off.", status: "ONGOING", categories: [], viewCount: 0, rating: { average: 0, count: 0 } };
+function HistoryCard({ item }: { item: StoredNovel }) {
+  const progress = Math.min(100, Math.max(0, item.progress ?? 0));
+  return <article className={styles.novelCard}>
+    <div className={styles.coverContainer}><Link href={`/novels/${item.slug}`}><img src={proxiedCoverUrl(item.coverUrl)} alt={item.title} className={styles.novelCover}/></Link></div>
+    <div className={styles.cardContent}>
+      <h3 className={styles.novelTitle}><Link href={`/novels/${item.slug}`}>{item.title}</Link></h3>
+      <div className={styles.progressBar} role="progressbar" aria-label={`Reading progress for ${item.title}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}><span className={styles.progress} style={{width:`${progress}%`}}/></div>
+      <Link href={`/novels/${item.slug}`} className={styles.readButton}>Continue Reading</Link>
+    </div>
+  </article>;
 }
 
 export function HomeHistory() {
@@ -17,7 +25,7 @@ export function HomeHistory() {
   return (
     <section className={styles.history}>
       <div className={styles.sectionHeader}><h2 className={styles.sectionTitle}>Reading History</h2><button type="button" className={styles.viewMoreButton} onClick={clear}>Clear History</button></div>
-      {items.length ? <div className={`${styles.cardsGrid} ${styles.historyGrid}`}>{items.slice(0, 5).map((item) => <HomeNovelCard novel={toNovel(item)} key={item.slug} />)}</div> : <p className={styles.emptyHistory}>No reading history yet</p>}
+      <div className={`${styles.cardsGrid} ${styles.historyGrid}`}>{items.length ? items.slice(0, 5).map((item) => <HistoryCard item={item} key={item.slug}/>) : <p className={styles.emptyHistory}>No reading history yet</p>}</div>
     </section>
   );
 }

@@ -90,11 +90,11 @@ export class ReaderAuthService {
     return this.collections(userId);
   }
 
-  async recordHistory(userId: string, slug: string) {
+  async recordHistory(userId: string, slug: string, progress?: number) {
     const novel = await this.findNovel(slug);
     const current = await this.prisma.readingHistory.findFirst({ where: { userId, novelId: novel.id } });
-    if (current) await this.prisma.readingHistory.update({ where: { id: current.id }, data: { updatedAt: new Date() } });
-    else await this.prisma.readingHistory.create({ data: { userId, novelId: novel.id } });
+    if (current) await this.prisma.readingHistory.update({ where: { id: current.id }, data: { updatedAt: new Date(), ...(progress === undefined ? {} : { progress: Math.max(Number(current.progress), progress) }) } });
+    else await this.prisma.readingHistory.create({ data: { userId, novelId: novel.id, progress: progress ?? 0 } });
     return { data: { recorded: true } };
   }
 
@@ -109,15 +109,16 @@ export class ReaderAuthService {
       this.prisma.libraryItem.findMany({ where: { userId }, orderBy: { savedAt: "desc" }, include: { novel: { select: novelSelect } } }),
       this.prisma.readingHistory.findMany({ where: { userId }, orderBy: { updatedAt: "desc" }, take: 20, include: { novel: { select: novelSelect } } })
     ]);
-    const mapNovel = (novel: (typeof library)[number]["novel"], savedAt: Date) => ({
+    const mapNovel = (novel: (typeof library)[number]["novel"], savedAt: Date, progress?: number) => ({
       slug: novel.slug,
       title: novel.title,
       coverUrl: novel.coverAsset?.publicUrl ?? "",
       authorName: novel.authorName,
       chapterCount: novel._count.chapters,
-      savedAt: savedAt.toISOString()
+      savedAt: savedAt.toISOString(),
+      ...(progress === undefined ? {} : { progress })
     });
-    return { data: { library: library.map((item) => mapNovel(item.novel, item.savedAt)), history: history.map((item) => mapNovel(item.novel, item.updatedAt)) } };
+    return { data: { library: library.map((item) => mapNovel(item.novel, item.savedAt)), history: history.map((item) => mapNovel(item.novel, item.updatedAt, Number(item.progress))) } };
   }
 
   private async mergeLibrary(userId: string, items: ReaderSyncDto["library"]) {
@@ -138,8 +139,8 @@ export class ReaderAuthService {
       const updatedAt = item.savedAt ? new Date(item.savedAt) : new Date();
       const current = await this.prisma.readingHistory.findFirst({ where: { userId, novelId: novel.id } });
       if (current) {
-        if (current.updatedAt < updatedAt) await this.prisma.readingHistory.update({ where: { id: current.id }, data: { updatedAt } });
-      } else await this.prisma.readingHistory.create({ data: { userId, novelId: novel.id, updatedAt } });
+        if (current.updatedAt < updatedAt || (item.progress ?? 0) > Number(current.progress)) await this.prisma.readingHistory.update({ where: { id: current.id }, data: { updatedAt: current.updatedAt < updatedAt ? updatedAt : current.updatedAt, progress: Math.max(Number(current.progress), item.progress ?? 0) } });
+      } else await this.prisma.readingHistory.create({ data: { userId, novelId: novel.id, updatedAt, progress: item.progress ?? 0 } });
     }
   }
 

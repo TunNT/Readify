@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { Novel } from "../lib/types";
 import { readerApi, ReaderApiError } from "./reader-api";
 
-export type StoredNovel = Pick<Novel, "slug" | "title" | "coverUrl" | "authorName" | "chapterCount"> & { savedAt: string };
+export type StoredNovel = Pick<Novel, "slug" | "title" | "coverUrl" | "authorName" | "chapterCount"> & { savedAt: string; progress?: number };
 export const libraryKey = "novelark-library";
 export const historyKey = "novelark-history";
 
@@ -34,7 +34,7 @@ async function authenticatedMutation(path: string, options: RequestInit) {
 export async function syncReaderCollections() {
   const body = {
     library: readStored(libraryKey).map(({ slug, savedAt }) => ({ slug, savedAt })),
-    history: readStored(historyKey).map(({ slug, savedAt }) => ({ slug, savedAt }))
+    history: readStored(historyKey).map(({ slug, savedAt, progress }) => ({ slug, savedAt, progress }))
   };
   const result = await readerApi<Collections>("/sync", { method: "POST", body: JSON.stringify(body) });
   if (result.data) applyCollections(result.data);
@@ -69,10 +69,13 @@ export function TrackNovelVisit({ novel }: { novel: Novel }) {
 }
 
 export function recordHistory(novel: StoredNovel) {
-  const current = readStored(historyKey).filter((item) => item.slug !== novel.slug);
-  localStorage.setItem(historyKey, JSON.stringify([novel, ...current].slice(0, 20)));
+  const stored = readStored(historyKey);
+  const previous = stored.find((item) => item.slug === novel.slug);
+  const nextNovel = { ...novel, progress: Math.max(previous?.progress ?? 0, novel.progress ?? 0) };
+  const current = stored.filter((item) => item.slug !== novel.slug);
+  localStorage.setItem(historyKey, JSON.stringify([nextNovel, ...current].slice(0, 20)));
   window.dispatchEvent(new Event(libraryChangedEvent));
-  void readerApi(`/history/${encodeURIComponent(novel.slug)}`, { method: "POST" }).catch((error: ReaderApiError) => { if (error.status !== 401) console.error(error); });
+  void readerApi(`/history/${encodeURIComponent(novel.slug)}`, { method: "POST", body: JSON.stringify({ progress: nextNovel.progress }) }).catch((error: ReaderApiError) => { if (error.status !== 401) console.error(error); });
 }
 
 export function getStoredNovels(key: string) { return readStored(key); }

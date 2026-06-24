@@ -3,7 +3,7 @@ import type { AuthenticatedUser } from "./auth.types";
 import { CurrentReader } from "./reader-auth.decorator";
 import { cookieValue, READER_COOKIE, ReaderAuthGuard } from "./reader-auth.guard";
 import { ReaderAuthService } from "./reader-auth.service";
-import { ReaderLoginDto, ReaderRegisterDto, ReaderSyncDto } from "./dto/reader-auth.dto";
+import { ReaderHistoryDto, ReaderLoginDto, ReaderRegisterDto, ReaderSyncDto } from "./dto/reader-auth.dto";
 
 type CookieOptions = { httpOnly?: boolean; secure?: boolean; sameSite?: "strict"; path?: string; expires?: Date };
 type CookieResponse = { cookie(name: string, value: string, options: CookieOptions): void; clearCookie(name: string, options: CookieOptions): void };
@@ -56,9 +56,9 @@ export class ReaderAuthController {
   }
 
   @Post("history/:slug")
-  async history(@Req() request: CookieRequest, @Param("slug") slug: string) {
+  async history(@Req() request: CookieRequest, @Param("slug") slug: string, @Body() input: ReaderHistoryDto) {
     const user = await this.currentReader(request);
-    return user ? this.auth.recordHistory(user.id, slug) : { data: { recorded: false } };
+    return user ? this.auth.recordHistory(user.id, slug, input.progress) : { data: { recorded: false } };
   }
 
   @Delete("collections/library")
