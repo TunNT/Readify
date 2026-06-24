@@ -17,8 +17,9 @@ export function ReaderExperience({ chapter, chapterList, novelInfo }: { chapter:
     const savedTheme = localStorage.getItem("novelark-reader-theme") === "dark";
     const savedSize = localStorage.getItem("novelark-reader-font") as typeof fontSize | null;
     setDark(savedTheme); if (savedSize) setFontSize(savedSize);
-    recordHistory({ ...novelInfo, savedAt: new Date().toISOString() });
-  }, [novelInfo]);
+    const progress = Math.min(100, Math.max(0, chapter.number / Math.max(1, novelInfo.chapterCount) * 100));
+    recordHistory({ ...novelInfo, progress, savedAt: new Date().toISOString() });
+  }, [chapter.number, novelInfo]);
   const toggleTheme = () => { const next = !dark; setDark(next); localStorage.setItem("novelark-reader-theme", next ? "dark" : "light"); };
   const changeSize = (size: typeof fontSize) => { setFontSize(size); localStorage.setItem("novelark-reader-font", size); };
   return (
