@@ -57,10 +57,14 @@ export class AdPlacementInputDto {
   @IsEnum(AdDevice) @IsOptional() device: AdDevice = AdDevice.ALL;
   @Type(() => Number) @IsInt() @Min(10) @Max(10000) @IsOptional() wordInterval?: number | null;
   @Type(() => Number) @IsInt() @Min(1) @Max(100) @IsOptional() maxInsertions?: number | null;
-  @Type(() => Number) @IsInt() @Min(-1000) @Max(1000) @IsOptional() priority = 0;
-  @IsBoolean() @IsOptional() isEnabled = false;
+  @Type(() => Number) @IsInt() @Min(1) @Max(1000) @IsOptional() priority = 1;
+  @IsBoolean() @IsOptional() isEnabled?: boolean;
   @IsISO8601() @IsOptional() startsAt?: string | null;
   @IsISO8601() @IsOptional() endsAt?: string | null;
+}
+
+export class AdStatusInputDto {
+  @IsBoolean() isEnabled!: boolean;
 }
 
 export class ContentPageInputDto {
