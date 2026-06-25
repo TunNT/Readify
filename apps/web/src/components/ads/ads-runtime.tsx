@@ -83,32 +83,78 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
 
 type ContentSegment = { html: string; ads: AdPlacement[] };
 
+function adPriorityRank(ad: AdPlacement) {
+  return ad.priority > 0 ? ad.priority : Number.MAX_SAFE_INTEGER;
+}
+
 export function InlineAdContent({ html, className }: { html: string; className: string }) {
   const allAds = useContext(AdsContext);
-  const inlineAds = useMemo(() => allAds.filter((ad) => ad.location === "INLINE" && ad.wordInterval), [allAds]);
+  const inlineAds = useMemo(() => [...allAds]
+    .filter((ad) => ad.location === "INLINE" && ad.wordInterval)
+    .sort((left, right) => adPriorityRank(left) - adPriorityRank(right)), [allAds]);
   const [segments, setSegments] = useState<ContentSegment[]>([{ html, ads: [] }]);
   useEffect(() => {
     if (!inlineAds.length) { setSegments([{ html, ads: [] }]); return; }
     const documentNode = new DOMParser().parseFromString(html, "text/html");
-    const nodes = [...documentNode.body.childNodes];
-    const counters = inlineAds.map((ad) => ({ ad, next: ad.wordInterval!, count: 0 }));
-    const nextSegments: ContentSegment[] = [];
-    let buffer = "";
-    for (const node of nodes) {
-      const holder = document.createElement("div"); holder.appendChild(node.cloneNode(true)); buffer += holder.innerHTML;
-      const words = (node.textContent ?? "").trim().split(/\s+/).filter(Boolean).length;
-      const due: AdPlacement[] = [];
-      for (const counter of counters) {
-        counter.count += words;
-        const currentInsertions = nextSegments.reduce((total, segment) => total + segment.ads.filter((item) => item.id === counter.ad.id).length, 0);
-        if (counter.count >= counter.next && (!counter.ad.maxInsertions || currentInsertions < counter.ad.maxInsertions)) {
-          due.push(counter.ad); counter.next += counter.ad.wordInterval!;
-        }
+    const insertionCounts = new Map<string, number>();
+    let wordsSinceInsertion = 0;
+    let adCursor = 0;
+    const markers: AdPlacement[] = [];
+    const pickNextAd = () => {
+      for (let offset = 0; offset < inlineAds.length; offset += 1) {
+        const index = (adCursor + offset) % inlineAds.length;
+        const ad = inlineAds[index];
+        const currentInsertions = insertionCounts.get(ad.id) ?? 0;
+        if (ad.maxInsertions && currentInsertions >= ad.maxInsertions) continue;
+        return { ad, index };
       }
-      if (due.length) { nextSegments.push({ html: buffer, ads: due }); buffer = ""; }
+      return null;
+    };
+    const insertMarker = (textNode: Text, splitOffset: number, candidate: { ad: AdPlacement; index: number }) => {
+      const marker = documentNode.createElement("span");
+      marker.setAttribute("data-inline-ad-marker", String(markers.length));
+      markers.push(candidate.ad);
+      const remainder = textNode.splitText(splitOffset);
+      textNode.parentNode?.insertBefore(marker, remainder);
+      insertionCounts.set(candidate.ad.id, (insertionCounts.get(candidate.ad.id) ?? 0) + 1);
+      adCursor = (candidate.index + 1) % inlineAds.length;
+      wordsSinceInsertion = 0;
+      return remainder;
+    };
+    const processTextNode = (initialNode: Text) => {
+      let textNode = initialNode;
+      while (textNode.nodeValue) {
+        const candidate = pickNextAd();
+        if (!candidate) return;
+        const wordsNeeded = candidate.ad.wordInterval! - wordsSinceInsertion;
+        const matches = [...textNode.nodeValue.matchAll(/\S+/g)];
+        if (matches.length < wordsNeeded) {
+          wordsSinceInsertion += matches.length;
+          return;
+        }
+        const word = matches[wordsNeeded - 1];
+        textNode = insertMarker(textNode, (word.index ?? 0) + word[0].length, candidate);
+      }
+    };
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) { processTextNode(node as Text); return; }
+      if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
+      const element = node as Element;
+      if (["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA"].includes(element.tagName)) return;
+      [...node.childNodes].forEach(walk);
+    };
+    walk(documentNode.body);
+    const nextSegments: ContentSegment[] = [];
+    const markerPattern = /<span data-inline-ad-marker="(\d+)"><\/span>/g;
+    const markedHtml = documentNode.body.innerHTML;
+    let lastIndex = 0;
+    for (let match = markerPattern.exec(markedHtml); match; match = markerPattern.exec(markedHtml)) {
+      nextSegments.push({ html: markedHtml.slice(lastIndex, match.index), ads: [markers[Number(match[1])]].filter(Boolean) });
+      lastIndex = markerPattern.lastIndex;
     }
-    if (buffer) nextSegments.push({ html: buffer, ads: [] });
+    const tail = markedHtml.slice(lastIndex);
+    if (tail) nextSegments.push({ html: tail, ads: [] });
     setSegments(nextSegments.length ? nextSegments : [{ html, ads: [] }]);
   }, [html, inlineAds]);
-  return <div className={className}>{segments.map((segment, index) => <div className={styles.contentSegment} key={`${index}-${segment.html.length}`}><div dangerouslySetInnerHTML={{ __html: segment.html }} />{segment.ads.map((ad) => <AdCode ad={ad} key={`${ad.id}-${index}`} />)}</div>)}</div>;
+  return <div className={className}>{segments.map((segment, index) => <div className={styles.contentSegment} key={`${index}-${segment.html.length}`}><div dangerouslySetInnerHTML={{ __html: segment.html }} />{segment.ads.map((ad, adIndex) => <AdCode ad={ad} key={`${ad.id}-${index}-${adIndex}`} />)}</div>)}</div>;
 }

@@ -4,7 +4,7 @@ import { UserRole } from "@prisma/client";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { AdminAuthGuard } from "../auth/auth.guard";
 import type { AuthenticatedUser } from "../auth/auth.types";
-import { AdPlacementInputDto, AdminListQueryDto, ChapterInputDto, ContentPageInputDto, NovelInputDto, RankingInputDto, TaxonomyInputDto, UserInputDto } from "./admin.dto";
+import { AdPlacementInputDto, AdStatusInputDto, AdminListQueryDto, ChapterInputDto, ContentPageInputDto, NovelInputDto, RankingInputDto, TaxonomyInputDto, UserInputDto } from "./admin.dto";
 import { AdminService } from "./admin.service";
 
 const CONTENT_ROLES = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR];
@@ -44,6 +44,7 @@ export class AdminController {
   @Get("ads") @Roles(UserRole.SUPER_ADMIN, UserRole.ADS_MANAGER) listAds() { return this.admin.listAds(); }
   @Post("ads") @Roles(UserRole.SUPER_ADMIN) createAd(@Body() input: AdPlacementInputDto, @CurrentUser() user: AuthenticatedUser) { return this.admin.createAd(input, user); }
   @Patch("ads/:id") @Roles(UserRole.SUPER_ADMIN) updateAd(@Param("id") id: string, @Body() input: AdPlacementInputDto, @CurrentUser() user: AuthenticatedUser) { return this.admin.updateAd(id, input, user); }
+  @Patch("ads/:id/status") @Roles(UserRole.SUPER_ADMIN) updateAdStatus(@Param("id") id: string, @Body() input: AdStatusInputDto, @CurrentUser() user: AuthenticatedUser) { return this.admin.updateAdStatus(id, input.isEnabled, user); }
   @Delete("ads/:id") @Roles(UserRole.SUPER_ADMIN) deleteAd(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) { return this.admin.deleteAd(id, user); }
 
   @Post("assets/covers") @Roles(...CONTENT_ROLES) @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5_000_000 } }))

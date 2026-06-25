@@ -10,6 +10,15 @@ import { hashPassword } from "../auth/password";
 import { AdPlacementInputDto, AdminListQueryDto, ChapterInputDto, ContentPageInputDto, NovelInputDto, RankingInputDto, TaxonomyInputDto, UserInputDto } from "./admin.dto";
 
 type UploadedCover = { originalname: string; mimetype: string; size: number; buffer: Buffer };
+type AdWithPriority = { priority: number; updatedAt: Date; createdAt: Date };
+
+function adPriorityRank(ad: { priority: number }) {
+  return ad.priority > 0 ? ad.priority : Number.MAX_SAFE_INTEGER;
+}
+
+function sortAdsByPriority<T extends AdWithPriority>(ads: T[]) {
+  return ads.sort((left, right) => adPriorityRank(left) - adPriorityRank(right) || right.updatedAt.getTime() - left.updatedAt.getTime() || left.createdAt.getTime() - right.createdAt.getTime());
+}
 
 @Injectable()
 export class AdminService {
@@ -156,15 +165,20 @@ export class AdminService {
     return { data };
   }
 
-  async listAds() { return { data: await this.prisma.adPlacement.findMany({ orderBy: [{ priority: "desc" }, { updatedAt: "desc" }] }) }; }
+  async listAds() { return { data: sortAdsByPriority(await this.prisma.adPlacement.findMany()) }; }
   async createAd(input: AdPlacementInputDto, user: AuthenticatedUser) {
     const key = await this.generateAdKey(input);
-    const data = await this.prisma.adPlacement.create({ data: { ...this.adData(input), key } });
+    const data = await this.prisma.adPlacement.create({ data: { ...this.adData(input), key, isEnabled: true } });
     await this.audit(user, "CREATE", "AdPlacement", data.id, { key: data.key }); return { data };
   }
   async updateAd(id: string, input: AdPlacementInputDto, user: AuthenticatedUser) {
     const data = await this.prisma.adPlacement.update({ where: { id }, data: this.adData(input) });
     await this.audit(user, "UPDATE", "AdPlacement", id, { key: data.key }); return { data };
+  }
+  async updateAdStatus(id: string, isEnabled: boolean, user: AuthenticatedUser) {
+    const data = await this.prisma.adPlacement.update({ where: { id }, data: { isEnabled } });
+    await this.audit(user, isEnabled ? "ENABLE" : "DISABLE", "AdPlacement", id, { key: data.key });
+    return { data };
   }
   async deleteAd(id: string, user: AuthenticatedUser) {
     await this.prisma.adPlacement.delete({ where: { id } }); await this.audit(user, "DELETE", "AdPlacement", id); return { data: { id } };
@@ -177,8 +191,8 @@ export class AdminService {
       catch { throw new BadRequestException("External scripts must use a valid HTTPS URL"); }
     }
     if (input.startsAt && input.endsAt && new Date(input.startsAt) >= new Date(input.endsAt)) throw new BadRequestException("End time must be after start time");
-    const { key: _ignoredKey, ...fields } = input;
-    return { ...fields, scopeValue: input.scope === "GLOBAL" ? null : input.scopeValue, startsAt: input.startsAt ? new Date(input.startsAt) : null, endsAt: input.endsAt ? new Date(input.endsAt) : null };
+    const { key: _ignoredKey, isEnabled: _ignoredEnabled, ...fields } = input;
+    return { ...fields, priority: input.priority ?? 1, scopeValue: input.scope === "GLOBAL" ? null : input.scopeValue, startsAt: input.startsAt ? new Date(input.startsAt) : null, endsAt: input.endsAt ? new Date(input.endsAt) : null };
   }
 
   private async generateAdKey(input: AdPlacementInputDto) {

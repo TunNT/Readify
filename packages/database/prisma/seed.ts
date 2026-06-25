@@ -29,7 +29,7 @@ async function main() {
     { key: "READER_INLINE", name: "Reader inline", location: "INLINE" as const, scope: "PAGE_TYPE" as const, scopeValue: "CHAPTER_READER", wordInterval: 50, maxInsertions: 5 }
   ];
   for (const ad of sampleAds) {
-    await prisma.adPlacement.upsert({ where: { key: ad.key }, update: {}, create: { ...ad, codeType: "HTML", code: "<!-- Paste trusted ad code in Admin -->", isEnabled: false } });
+    await prisma.adPlacement.upsert({ where: { key: ad.key }, update: {}, create: { ...ad, codeType: "HTML", code: "<!-- Paste trusted ad code in Admin -->", priority: 1, isEnabled: false } });
   }
 
   const importedNovelCount = await prisma.novel.count({ where: { slug: { not: "phase-one-placeholder-novel" } } });
