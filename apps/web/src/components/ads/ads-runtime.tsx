@@ -33,13 +33,15 @@ function activateScripts(container: HTMLElement) {
   });
 }
 
-function AdCode({ ad, target = "body" }: { ad: AdPlacement; target?: "body" | "head" }) {
+function AdCode({ ad, renderKey, target = "body" }: { ad: AdPlacement; renderKey: string; target?: "body" | "head" }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const host = target === "head" ? document.head : ref.current;
     if (!host) return;
+    if (target !== "head" && ref.current) ref.current.replaceChildren();
     const marker = document.createElement(target === "head" ? "meta" : "div");
     marker.dataset.adPlacement = ad.key;
+    marker.dataset.adRenderKey = renderKey;
     if (ad.codeType === "EXTERNAL_SCRIPT") {
       const script = document.createElement("script"); script.async = true; script.src = ad.code.trim(); marker.appendChild(script);
     } else if (ad.codeType === "INLINE_JS") {
@@ -49,20 +51,22 @@ function AdCode({ ad, target = "body" }: { ad: AdPlacement; target?: "body" | "h
     }
     host.appendChild(marker);
     return () => marker.remove();
-  }, [ad, target]);
+  }, [ad, renderKey, target]);
   if (target === "head") return null;
   return <div ref={ref} className={`${styles.slot} ${styles[ad.device.toLowerCase()]}`} data-ad-key={ad.key} aria-label="Advertisement" />;
 }
 
 export function AdSlot({ location }: { location: AdPlacement["location"] }) {
+  const path = usePathname();
   const ads = useContext(AdsContext).filter((ad) => ad.location === location);
   if (!ads.length) return null;
-  return <div className={styles.region} data-ad-location={location.toLowerCase()}>{ads.map((ad) => <AdCode ad={ad} key={ad.id} />)}</div>;
+  return <div className={styles.region} data-ad-location={location.toLowerCase()}>{ads.map((ad) => <AdCode ad={ad} renderKey={`${path}:${location}:${ad.id}`} key={`${path}:${ad.id}`} />)}</div>;
 }
 
 function HeadAds() {
+  const path = usePathname();
   const ads = useContext(AdsContext).filter((ad) => ad.location === "HEAD");
-  return <>{ads.map((ad) => <AdCode ad={ad} key={ad.id} target="head" />)}</>;
+  return <>{ads.map((ad) => <AdCode ad={ad} renderKey={`${path}:head:${ad.id}`} key={`${path}:${ad.id}`} target="head" />)}</>;
 }
 
 export function AdsRuntime({ children }: { children: React.ReactNode }) {
@@ -70,6 +74,7 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
   const [ads, setAds] = useState<AdPlacement[]>([]);
   useEffect(() => {
     if (path.startsWith("/admin")) { setAds([]); return; }
+    setAds([]);
     const controller = new AbortController();
     fetch(`/api/ads?path=${encodeURIComponent(path)}&pageType=${encodeURIComponent(pageType(path))}`, { signal: controller.signal })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Ads request failed")))
@@ -88,6 +93,7 @@ function adPriorityRank(ad: AdPlacement) {
 }
 
 export function InlineAdContent({ html, className }: { html: string; className: string }) {
+  const path = usePathname();
   const allAds = useContext(AdsContext);
   const inlineAds = useMemo(() => [...allAds]
     .filter((ad) => ad.location === "INLINE" && ad.wordInterval)
@@ -156,5 +162,5 @@ export function InlineAdContent({ html, className }: { html: string; className: 
     if (tail) nextSegments.push({ html: tail, ads: [] });
     setSegments(nextSegments.length ? nextSegments : [{ html, ads: [] }]);
   }, [html, inlineAds]);
-  return <div className={className}>{segments.map((segment, index) => <div className={styles.contentSegment} key={`${index}-${segment.html.length}`}><div dangerouslySetInnerHTML={{ __html: segment.html }} />{segment.ads.map((ad, adIndex) => <AdCode ad={ad} key={`${ad.id}-${index}-${adIndex}`} />)}</div>)}</div>;
+  return <div className={className}>{segments.map((segment, index) => <div className={styles.contentSegment} key={`${path}-${index}-${segment.html.length}`}><div dangerouslySetInnerHTML={{ __html: segment.html }} />{segment.ads.map((ad, adIndex) => <AdCode ad={ad} renderKey={`${path}:inline:${index}:${ad.id}:${adIndex}`} key={`${path}:${ad.id}:${index}:${adIndex}`} />)}</div>)}</div>;
 }
