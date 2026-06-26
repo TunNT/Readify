@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, UserRole } from "@prisma/client";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -18,6 +18,11 @@ function adPriorityRank(ad: { priority: number }) {
 
 function sortAdsByPriority<T extends AdWithPriority>(ads: T[]) {
   return ads.sort((left, right) => adPriorityRank(left) - adPriorityRank(right) || right.updatedAt.getTime() - left.updatedAt.getTime() || left.createdAt.getTime() - right.createdAt.getTime());
+}
+
+function isUniqueConstraintError(error: unknown, field: string) {
+  const target = (error as { code?: string; meta?: { target?: unknown } }).meta?.target;
+  return (error as { code?: string }).code === "P2002" && Array.isArray(target) && target.includes(field);
 }
 
 @Injectable()
@@ -64,27 +69,37 @@ export class AdminService {
 
   async createNovel(input: NovelInputDto, user: AuthenticatedUser) {
     if (!input.title || !input.slug) throw new BadRequestException("Title and slug are required");
-    const data = await this.prisma.novel.create({ data: {
-      title: input.title, slug: input.slug, authorName: input.authorName, description: input.description ?? "", status: input.status,
-      isPublished: input.isPublished ?? false, coverAssetId: input.coverAssetId,
-      categories: input.categoryIds?.length ? { create: input.categoryIds.map((categoryId) => ({ categoryId })) } : undefined,
-      tags: input.tagIds?.length ? { create: input.tagIds.map((tagId) => ({ tagId })) } : undefined
-    } });
-    await this.audit(user, "CREATE", "Novel", data.id, { title: data.title });
-    return { data };
+    try {
+      const data = await this.prisma.novel.create({ data: {
+        title: input.title, slug: input.slug, authorName: input.authorName, description: input.description ?? "", status: input.status,
+        isPublished: input.isPublished ?? false, coverAssetId: input.coverAssetId,
+        categories: input.categoryIds?.length ? { create: input.categoryIds.map((categoryId) => ({ categoryId })) } : undefined,
+        tags: input.tagIds?.length ? { create: input.tagIds.map((tagId) => ({ tagId })) } : undefined
+      } });
+      await this.audit(user, "CREATE", "Novel", data.id, { title: data.title });
+      return { data };
+    } catch (error) {
+      if (isUniqueConstraintError(error, "slug")) throw new ConflictException("A story with this slug already exists. Choose another slug or edit the existing story.");
+      throw error;
+    }
   }
 
   async updateNovel(id: string, input: NovelInputDto, user: AuthenticatedUser) {
     const exists = await this.prisma.novel.findUnique({ where: { id }, select: { id: true } });
     if (!exists) throw new NotFoundException("Novel not found");
     const { categoryIds, tagIds, ...fields } = input;
-    const data = await this.prisma.novel.update({ where: { id }, data: {
-      ...fields,
-      ...(categoryIds ? { categories: { deleteMany: {}, create: categoryIds.map((categoryId) => ({ categoryId })) } } : {}),
-      ...(tagIds ? { tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) } } : {})
-    } });
-    await this.audit(user, "UPDATE", "Novel", id, { fields: Object.keys(input) });
-    return { data };
+    try {
+      const data = await this.prisma.novel.update({ where: { id }, data: {
+        ...fields,
+        ...(categoryIds ? { categories: { deleteMany: {}, create: categoryIds.map((categoryId) => ({ categoryId })) } } : {}),
+        ...(tagIds ? { tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) } } : {})
+      } });
+      await this.audit(user, "UPDATE", "Novel", id, { fields: Object.keys(input) });
+      return { data };
+    } catch (error) {
+      if (isUniqueConstraintError(error, "slug")) throw new ConflictException("A story with this slug already exists. Choose another slug or edit the existing story.");
+      throw error;
+    }
   }
 
   async deleteNovel(id: string, user: AuthenticatedUser) {
