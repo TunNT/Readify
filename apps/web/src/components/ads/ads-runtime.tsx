@@ -105,7 +105,7 @@ export function InlineAdContent({ html, className }: { html: string; className: 
         const index = (adCursor + offset) % inlineAds.length;
         const ad = inlineAds[index];
         const currentInsertions = insertionCounts.get(ad.id) ?? 0;
-        if (ad.maxInsertions && currentInsertions >= ad.maxInsertions) continue;
+        if (currentInsertions > 0) continue;
         return { ad, index };
       }
       return null;
