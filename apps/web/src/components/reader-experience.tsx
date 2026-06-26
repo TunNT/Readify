@@ -37,13 +37,13 @@ export function ReaderExperience({ chapter, chapterList, novelInfo }: { chapter:
         </div>
       </main>
       <footer className="readerFooter"><div className="readerContainer readerFooterInner">
-        {chapter.previous ? <Link className="readerNavButton" href={`/novels/${chapter.novel.slug}/${chapter.previous.slug}`}><ChevronLeft size={18} /> Previous</Link> : <span />}
-        {chapter.next ? <Link className="readerNavButton" href={`/novels/${chapter.novel.slug}/${chapter.next.slug}`}>Next <ChevronRight size={18} /></Link> : null}
+        {chapter.previous ? <a className="readerNavButton" href={`/novels/${chapter.novel.slug}/${chapter.previous.slug}`}><ChevronLeft size={18} /> Previous</a> : <span />}
+        {chapter.next ? <a className="readerNavButton" href={`/novels/${chapter.novel.slug}/${chapter.next.slug}`}>Next <ChevronRight size={18} /></a> : null}
       </div></footer>
       <button aria-label="Close chapter list" className={`readerOverlay${open ? " open" : ""}`} onClick={() => setOpen(false)} />
       <aside className={`readerSidebar${open ? " open" : ""}`} aria-hidden={!open}>
         <div className="readerSidebarHeader"><h2>Chapters</h2><button className="readerIconButton" onClick={() => setOpen(false)} title="Close"><X size={20} /></button></div>
-        <nav>{chapterList.map((item) => <Link className={item.slug === chapter.slug ? "active" : ""} href={`/novels/${chapter.novel.slug}/${item.slug}`} key={item.slug}>{item.title}</Link>)}</nav>
+        <nav>{chapterList.map((item) => <a className={item.slug === chapter.slug ? "active" : ""} href={`/novels/${chapter.novel.slug}/${item.slug}`} key={item.slug}>{item.title}</a>)}</nav>
       </aside>
     </div>
   );
