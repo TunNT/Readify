@@ -212,9 +212,9 @@ Customer-facing Vietnamese documentation:
 3. Choose where the ad is allowed to appear. A placement currently targets one
    page type, one story target, or one custom path. Create another placement
    when the same code must run on another page type.
-4. Choose a compatible position. `INLINE` works only in chapter-reader content;
-   `TOP` and `BOTTOM` are page-level regions; script hooks do not guarantee a
-   visible block by themselves.
+4. Choose a compatible position. `BELOW_CHAPTER_TITLE` and `INLINE` work only
+   in chapter-reader content; `TOP` and `BOTTOM` are page-level regions; script
+   hooks do not guarantee a visible block by themselves.
 5. Paste trusted partner HTML/JavaScript, leave **Enabled** off, and save.
 6. Test with visible dummy HTML on desktop and mobile. Clear start/end dates
    unless the placement is intentionally scheduled.
@@ -234,7 +234,8 @@ stable during edits. Operators choose friendly targets instead of entering
 scope codes: entire website, a page type, one story detail page, every chapter
 of a selected story, or an advanced custom URL path.
 
-- Locations: `HEAD`, `OPEN_BODY`, `CLOSE_BODY`, `TOP`, `BOTTOM`, and `INLINE`.
+- Locations: `HEAD`, `OPEN_BODY`, `CLOSE_BODY`, `TOP`, `BOTTOM`,
+  `BELOW_CHAPTER_TITLE`, and `INLINE`.
 - `GLOBAL` scope matches every public route.
 - `PAGE_TYPE` accepts `HOME`, `CATEGORY`, `NOVEL_LIST`, `NOVEL_DETAIL`,
   `CHAPTER_READER`, `SEARCH`, or `CONTENT_PAGE`.

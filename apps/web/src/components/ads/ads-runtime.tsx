@@ -6,7 +6,7 @@ import styles from "./ads.module.css";
 
 export type AdPlacement = {
   id: string; name: string; key: string; scope: "GLOBAL" | "PAGE_TYPE" | "SPECIFIC_PAGE";
-  scopeValue?: string | null; location: "HEAD" | "OPEN_BODY" | "CLOSE_BODY" | "TOP" | "BOTTOM" | "INLINE";
+  scopeValue?: string | null; location: "HEAD" | "OPEN_BODY" | "CLOSE_BODY" | "TOP" | "BOTTOM" | "BELOW_CHAPTER_TITLE" | "INLINE";
   codeType: "HTML" | "INLINE_JS" | "EXTERNAL_SCRIPT"; code: string; device: "ALL" | "DESKTOP" | "MOBILE";
   wordInterval?: number | null; maxInsertions?: number | null; priority: number;
 };
