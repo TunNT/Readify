@@ -166,6 +166,7 @@ Position xác định nơi code được gắn vào trang đã chọn.
 | Closing body script | Chạy code ở vùng cuối body | Tùy code |
 | Top of page | Vùng quảng cáo cấp trang trước nội dung chính | Có |
 | Bottom of page | Vùng quảng cáo sau toàn bộ nội dung trang | Có |
+| Below chapter title | Ngay dưới tiêu đề `Chapter N`, trước nội dung chương | Có |
 | Between chapter paragraphs | Chèn lặp lại giữa các đoạn của chương | Có |
 
 `Top of page` và `Bottom of page` là block trong luồng trang nên có thể đẩy nội
@@ -320,9 +321,9 @@ thể không trả inventory, bị ad blocker chặn hoặc từ chối domain l
 | Homepage | TOP, BOTTOM, script hooks | Không dùng INLINE |
 | Category pages | TOP, BOTTOM, script hooks | Không dùng INLINE |
 | Story detail pages | TOP, BOTTOM, script hooks | INLINE không chạy ở trang chi tiết |
-| Chapter reader | TOP, BOTTOM, INLINE, script hooks | INLINE dùng cho nội dung chương |
+| Chapter reader | TOP, BOTTOM, BELOW_CHAPTER_TITLE, INLINE, script hooks | BELOW_CHAPTER_TITLE nằm dưới tiêu đề chương; INLINE dùng cho nội dung chương |
 | One story detail page | TOP, BOTTOM, script hooks | Chỉ URL `/novels/{slug}` |
-| All chapters of one story | INLINE, TOP, BOTTOM | Khớp `/novels/{slug}/*` |
+| All chapters of one story | BELOW_CHAPTER_TITLE, INLINE, TOP, BOTTOM | Khớp `/novels/{slug}/*` |
 | Content pages | TOP, BOTTOM, script hooks | About, FAQ, Contact... |
 
 Nếu chọn tổ hợp không tương thích, placement có thể được lưu nhưng sẽ không có

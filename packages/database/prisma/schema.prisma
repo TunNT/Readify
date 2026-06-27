@@ -38,6 +38,7 @@ enum AdLocation {
   CLOSE_BODY
   TOP
   BOTTOM
+  BELOW_CHAPTER_TITLE
   INLINE
 }
 

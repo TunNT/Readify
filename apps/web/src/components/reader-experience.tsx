@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ChapterListItem, ChapterResponse, Novel } from "../lib/types";
 import { recordHistory } from "./library-actions";
-import { InlineAdContent } from "./ads/ads-runtime";
+import { AdSlot, InlineAdContent } from "./ads/ads-runtime";
 import { ReaderAccount } from "./reader-account";
 
 type ReaderData = ChapterResponse["data"];
@@ -31,6 +31,7 @@ export function ReaderExperience({ chapter, chapterList, novelInfo }: { chapter:
       </div></header>
       <main className="readerContainer readerMain">
         <p className="readerNovelTitle">{chapter.novel.title}</p><h1>{chapter.title}</h1>
+        <AdSlot location="BELOW_CHAPTER_TITLE" />
         {chapter.contentAvailable ? <InlineAdContent className={`readerContent font-${fontSize}`} html={chapter.content} /> : <div className="readerUnavailable"><BookOpen size={32} /><h2>Chapter content is being imported</h2><p>The chapter is listed in the catalog, but its reading text is not available locally yet.</p></div>}
         <div className="fontControls" role="group" aria-label="Reading font size">
           {(["small", "medium", "large"] as const).map((size) => <button className={fontSize === size ? "active" : ""} onClick={() => changeSize(size)} key={size}>{size === "small" ? "A-" : size === "large" ? "A+" : "A"}</button>)}

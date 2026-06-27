@@ -10,7 +10,7 @@ const pageTypes = [
   ["HOME","Homepage"],["NOVEL_LIST","Novel catalog"],["CATEGORY","Category pages"],["NOVEL_DETAIL","Novel detail pages"],
   ["CHAPTER_READER","Chapter reader"],["SEARCH","Search results"],["CONTENT_PAGE","Content pages"]
 ] as const;
-const locationLabels:Record<string,string>={HEAD:"Head script",OPEN_BODY:"Opening body script",CLOSE_BODY:"Closing body script",TOP:"Top of page",BOTTOM:"Bottom of page",INLINE:"Between chapter paragraphs"};
+const locationLabels:Record<string,string>={HEAD:"Head script",OPEN_BODY:"Opening body script",CLOSE_BODY:"Closing body script",TOP:"Top of page",BOTTOM:"Bottom of page",BELOW_CHAPTER_TITLE:"Below chapter title",INLINE:"Between chapter paragraphs"};
 const scopeLabels:Record<string,string>={GLOBAL:"Entire website",PAGE_TYPE:"A type of page",SPECIFIC_PAGE:"A specific page or novel"};
 
 export function AdsPanel({user}:{user:AdminUser}) {
