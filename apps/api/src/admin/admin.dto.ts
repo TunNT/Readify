@@ -1,6 +1,6 @@
 import { AdCodeType, AdDevice, AdLocation, AdScope, NovelStatus, UserRole } from "@prisma/client";
 import { Transform, Type } from "class-transformer";
-import { ArrayUnique, IsArray, IsBoolean, IsDefined, IsEmail, IsEnum, IsIn, IsInt, IsISO8601, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateIf } from "class-validator";
+import { ArrayUnique, IsArray, IsBoolean, IsDefined, IsEmail, IsEnum, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUrl, Matches, Max, MaxLength, Min, MinLength, ValidateIf } from "class-validator";
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -65,6 +65,16 @@ export class AdPlacementInputDto {
 
 export class AdStatusInputDto {
   @IsBoolean() isEnabled!: boolean;
+}
+
+export class SiteSettingInputDto {
+  @IsString() @MinLength(1) @MaxLength(120) siteName!: string;
+  @IsUrl({ require_tld: false, require_protocol: true }) @MaxLength(500) siteUrl!: string;
+  @IsString() @MinLength(1) @MaxLength(160) seoTitle!: string;
+  @IsString() @MinLength(1) @MaxLength(320) seoDescription!: string;
+  @IsString() @IsOptional() logoAssetId?: string | null;
+  @IsString() @IsOptional() faviconAssetId?: string | null;
+  @IsString() @IsOptional() socialImageAssetId?: string | null;
 }
 
 export class ContentPageInputDto {

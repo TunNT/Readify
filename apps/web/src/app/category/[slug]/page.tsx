@@ -1,4 +1,5 @@
 import { BookOpen, Home } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CategoryCard } from "../../../components/category/category-card";
@@ -8,6 +9,9 @@ import { categoryContent, romanceNovelSlugs } from "../../../components/category
 import styles from "../../../components/category/category.module.css";
 import { ApiError, apiFetch } from "../../../lib/api";
 import type { Novel, NovelListResponse } from "../../../lib/types";
+import { getSiteSettings, pageMetadata } from "../../../lib/seo";
+
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const{slug}=await params;const settings=await getSiteSettings();const content=categoryContent[slug]??{name:slug.charAt(0).toUpperCase()+slug.slice(1),description:`Explore free ${slug} novels and find your next story.`};return pageMetadata(settings,{title:`${content.name} Novels`,description:content.description,path:`/category/${slug}`});}
 
 function orderRomanceNovels(novels: Novel[]) {
   const bySlug = new Map(novels.map((novel) => [novel.slug, novel]));

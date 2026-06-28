@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteBrand, SiteName } from "./site-settings";
 
 const footerGroups = [
   { title: "Quick Links", links: [["About Us", "/about"], ["Contact", "/contact"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"]] },
@@ -11,7 +12,7 @@ export function SiteFooter() {
     <footer className="siteFooter">
       <div className="footerInner">
         <div className="footerAbout">
-          <div className="footerBrand">WeAreNovelArk</div>
+          <SiteBrand className="footerBrand"/>
           <p>A curated selection of free romance, fantasy, werewolf, and contemporary novels.</p>
         </div>
         {footerGroups.map((group) => (
@@ -21,7 +22,7 @@ export function SiteFooter() {
           </div>
         ))}
       </div>
-      <div className="copyright">© 2025 WeAreNovelArk. All rights reserved.</div>
+      <div className="copyright">© 2025 <SiteName/>. All rights reserved.</div>
     </footer>
   );
 }

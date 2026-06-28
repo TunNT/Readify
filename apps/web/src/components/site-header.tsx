@@ -1,15 +1,14 @@
 import { BookOpen, Home, Library, Search } from "lucide-react";
 import Link from "next/link";
 import { ReaderAccount } from "./reader-account";
+import { SiteBrand } from "./site-settings";
 
 export function SiteHeader() {
   return (
     <>
       <header className="siteHeader">
         <div className="headerInner">
-          <Link className="brand" href="/" aria-label="WeAreNovelArk home">
-            WeAreNovel<span>Ark</span>
-          </Link>
+          <SiteBrand className="brand"/>
           <form className="searchForm" action="/search" role="search">
             <Search aria-hidden="true" size={17} />
             <input name="q" type="search" placeholder="Search novels..." aria-label="Search novels" maxLength={100} />

@@ -76,3 +76,19 @@ export type ChapterResponse = {
 export type ContentPageResponse = {
   data: { slug: string; title: string; contentHtml: string; importedAt: string; updatedAt: string };
 };
+
+export type SiteSettings = {
+  siteName: string;
+  siteUrl: string;
+  seoTitle: string;
+  seoDescription: string;
+  logoAssetId?: string | null;
+  faviconAssetId?: string | null;
+  socialImageAssetId?: string | null;
+  logoUrl?: string | null;
+  faviconUrl?: string | null;
+  socialImageUrl?: string | null;
+};
+
+export type SiteSettingsResponse = { data: SiteSettings };
+export type SeoSitemapResponse = { data: Array<{ slug: string; updatedAt: string; chapters: Array<{ slug: string; updatedAt: string }> }> };

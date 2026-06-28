@@ -8,6 +8,13 @@ import { homeCategorySource, recommendedNovelSlugs } from "../components/home/ho
 import styles from "../components/home/home.module.css";
 import { apiFetch } from "../lib/api";
 import type { HomeResponse, Novel, NovelListResponse } from "../lib/types";
+import { getSiteSettings, pageMetadata } from "../lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  const metadata = pageMetadata(settings, { title: settings.seoTitle, description: settings.seoDescription, path: "/" });
+  return { ...metadata, title: { absolute: settings.seoTitle } };
+}
 
 function buildCategoryGroups(novels: Novel[]): HomeCategoryGroup[] {
   const bySlug = new Map(novels.map((novel) => [novel.slug, novel]));
@@ -47,3 +54,4 @@ export default async function HomePage() {
     </div>
   );
 }
+import type { Metadata } from "next";

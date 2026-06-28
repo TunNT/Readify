@@ -199,6 +199,19 @@ under 5 MB and are registered in `Asset`, preserving the future S3 migration pat
 `ContentPage` and `Ranking` data and protected APIs are retained for
 maintenance, but both modules are intentionally hidden from Admin navigation.
 
+### Site Branding and SEO
+
+`SUPER_ADMIN` can open **Site settings** to manage the website name, public URL,
+logo, browser favicon, default social sharing image, SEO title, and SEO
+description. Uploaded branding files are stored in `storage/covers` and linked
+through `Asset`, following the same future S3 migration path as story covers.
+
+The public site generates canonical URLs, Open Graph/Facebook tags, Twitter/X
+cards, `robots.txt`, `sitemap.xml`, and JSON-LD. Story and chapter pages use
+their own title, description, cover image, and structured data. After deploying
+to a new domain, update **Public website URL** in Site settings before submitting
+the sitemap to Google Search Console.
+
 ### Advertising Placements
 
 Customer-facing Vietnamese documentation:
@@ -259,7 +272,7 @@ Primary protected endpoints:
 /api/admin/auth/*       /api/admin/dashboard     /api/admin/novels
 /api/admin/chapters     /api/admin/categories    /api/admin/tags
 /api/admin/assets       /api/admin/pages         /api/admin/rankings
-/api/admin/ads          /api/admin/users
+/api/admin/ads          /api/admin/users         /api/admin/settings
 ```
 
 Mutations use JSON except cover upload, which uses `multipart/form-data` with
@@ -339,6 +352,10 @@ from rows whose `content` is still empty.
 When S3 is added, keep the `Novel.coverAssetId` relation and update assets from `LOCAL` to `S3`.
 
 ## VPS Deployment With Docker Compose
+
+Quy trình triển khai và cập nhật production bằng tiếng Việt:
+
+- [Quy trình triển khai Readify](docs/QUY-TRINH-DEPLOY.md)
 
 1. Install Docker and Docker Compose on the VPS.
 2. Copy the repository to the VPS.

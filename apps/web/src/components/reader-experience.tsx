@@ -7,6 +7,7 @@ import type { ChapterListItem, ChapterResponse, Novel } from "../lib/types";
 import { recordHistory } from "./library-actions";
 import { AdSlot, InlineAdContent } from "./ads/ads-runtime";
 import { ReaderAccount } from "./reader-account";
+import { SiteBrand } from "./site-settings";
 
 type ReaderData = ChapterResponse["data"];
 export function ReaderExperience({ chapter, chapterList, novelInfo }: { chapter: ReaderData; chapterList: ChapterListItem[]; novelInfo: Pick<Novel, "slug" | "title" | "coverUrl" | "authorName" | "chapterCount"> }) {
@@ -26,7 +27,7 @@ export function ReaderExperience({ chapter, chapterList, novelInfo }: { chapter:
     <div className={`readerPage${dark ? " darkReader" : ""}`}>
       <header className="readerHeader"><div className="readerContainer readerHeaderInner">
         <div><Link className="readerIconButton" href={`/novels/${chapter.novel.slug}`} title="Back to novel"><ArrowLeft size={20} /></Link><button className="readerIconButton" onClick={() => setOpen(true)} title="Chapter list"><List size={20} /></button></div>
-        <Link className="readerBrand" href="/">GoodLuckArk</Link>
+        <SiteBrand className="readerBrand"/>
         <div><ReaderAccount compact/><button className="readerIconButton" onClick={toggleTheme} title={dark ? "Use light theme" : "Use dark theme"}>{dark ? <Sun size={20} /> : <Moon size={20} />}</button></div>
       </div></header>
       <main className="readerContainer readerMain">

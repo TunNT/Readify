@@ -7,7 +7,8 @@ import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { hashPassword } from "../auth/password";
-import { AdPlacementInputDto, AdminListQueryDto, ChapterInputDto, ContentPageInputDto, NovelInputDto, RankingInputDto, TaxonomyInputDto, UserInputDto } from "./admin.dto";
+import { presentSiteSetting, siteSettingInclude } from "../settings/settings.service";
+import { AdPlacementInputDto, AdminListQueryDto, ChapterInputDto, ContentPageInputDto, NovelInputDto, RankingInputDto, SiteSettingInputDto, TaxonomyInputDto, UserInputDto } from "./admin.dto";
 
 type UploadedCover = { originalname: string; mimetype: string; size: number; buffer: Buffer };
 type AdWithPriority = { priority: number; updatedAt: Date; createdAt: Date };
@@ -227,13 +228,39 @@ export class AdminService {
 
   async uploadCover(file: UploadedCover, user: AuthenticatedUser) {
     if (!file || !file.mimetype.startsWith("image/") || file.size > 5_000_000) throw new BadRequestException("A cover image under 5 MB is required");
+    return this.storeImageAsset(file, user, "COVER");
+  }
+
+  async uploadSiteAsset(file: UploadedCover, user: AuthenticatedUser) {
+    const allowedTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/x-icon", "image/vnd.microsoft.icon"]);
+    if (!file || !allowedTypes.has(file.mimetype) || file.size > 5_000_000) throw new BadRequestException("A PNG, JPG, WebP, or ICO image under 5 MB is required");
+    return this.storeImageAsset(file, user, "SITE_ASSET");
+  }
+
+  private async storeImageAsset(file: UploadedCover, user: AuthenticatedUser, auditType: "COVER" | "SITE_ASSET") {
     const extension = extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "") || ".jpg";
     const filename = `${randomUUID()}${extension}`;
     await mkdir(this.coverPath, { recursive: true });
     await writeFile(join(this.coverPath, filename), file.buffer);
     const data = await this.prisma.asset.create({ data: { provider: "LOCAL", localPath: join(this.coverPath, filename), storageKey: `covers/${filename}`, publicUrl: `/covers/${filename}`, contentType: file.mimetype, byteSize: file.size, checksum: createHash("sha256").update(file.buffer).digest("hex") } });
-    await this.audit(user, "UPLOAD", "Asset", data.id, { filename });
+    await this.audit(user, "UPLOAD", "Asset", data.id, { filename, type: auditType });
     return { data };
+  }
+
+  async getSiteSettings() {
+    const setting = await this.prisma.siteSetting.upsert({ where: { id: "default" }, update: {}, create: { id: "default" }, include: siteSettingInclude });
+    return { data: presentSiteSetting(setting) };
+  }
+
+  async updateSiteSettings(input: SiteSettingInputDto, user: AuthenticatedUser) {
+    const setting = await this.prisma.siteSetting.upsert({
+      where: { id: "default" },
+      update: input,
+      create: { id: "default", ...input },
+      include: siteSettingInclude
+    });
+    await this.audit(user, "UPDATE", "SiteSetting", setting.id, { fields: Object.keys(input) });
+    return { data: presentSiteSetting(setting) };
   }
 
   async listPages() { return { data: await this.prisma.contentPage.findMany({ orderBy: { title: "asc" } }) }; }

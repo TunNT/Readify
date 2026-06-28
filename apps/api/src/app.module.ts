@@ -8,6 +8,7 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { AdminModule } from "./admin/admin.module";
 import { AdsModule } from "./ads/ads.module";
 import { AuthModule } from "./auth/auth.module";
+import { SettingsModule } from "./settings/settings.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AuthModule } from "./auth/auth.module";
     AuthModule,
     AdminModule,
     AdsModule,
+    SettingsModule,
     CatalogModule,
     HealthModule
   ]
