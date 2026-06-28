@@ -1,12 +1,12 @@
 import { Search } from "lucide-react";
-import Link from "next/link";
 import styles from "./home.module.css";
 import { ReaderAccount } from "../reader-account";
+import { SiteBrand } from "../site-settings";
 
 export function HomeHeader() {
   return (
     <nav className={styles.navbar} aria-label="Homepage navigation">
-      <Link href="/" className={styles.logo}>WeAreNovel<span>Ark</span></Link>
+      <SiteBrand className={styles.logo}/>
       <div className={styles.navRight}>
         <form className={styles.searchBox} action="/search" role="search">
           <Search size={15} aria-hidden="true" />

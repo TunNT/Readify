@@ -9,6 +9,7 @@ import { AdsPanel } from "./ads-panel";
 import { DashboardPanel } from "./dashboard-panel";
 import { NovelsPanel } from "./novels-panel";
 import { TaxonomyPanel } from "./taxonomy-panel";
+import { SettingsPanel } from "./settings-panel";
 
 export function AdminConsole() {
   const router=useRouter(); const [user,setUser]=useState<AdminUser|null>(null); const [section,setSection]=useState<AdminSection>("dashboard");
@@ -19,5 +20,6 @@ export function AdminConsole() {
     {section==="dashboard"?<DashboardPanel/>:null}{section==="novels"?<NovelsPanel/>:null}
     {section==="categories"?<TaxonomyPanel type="categories"/>:null}{section==="tags"?<TaxonomyPanel type="tags"/>:null}
     {section==="ads"?<AdsPanel user={user}/>:null}{section==="users"&&user.role==="SUPER_ADMIN"?<UsersPanel/>:null}
+    {section==="settings"&&user.role==="SUPER_ADMIN"?<SettingsPanel/>:null}
   </AdminShell>;
 }

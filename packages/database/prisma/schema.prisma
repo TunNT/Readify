@@ -55,20 +55,23 @@ enum AdDevice {
 }
 
 model Asset {
-  id          String        @id @default(cuid())
-  provider    AssetProvider @default(LOCAL)
-  originalUrl String?
-  localPath   String?
-  storageKey  String?
-  publicUrl   String?
-  contentType String?
-  byteSize    Int?
-  width       Int?
-  height      Int?
-  checksum    String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  coverNovels Novel[]       @relation("NovelCover")
+  id               String        @id @default(cuid())
+  provider         AssetProvider @default(LOCAL)
+  originalUrl      String?
+  localPath        String?
+  storageKey       String?
+  publicUrl        String?
+  contentType      String?
+  byteSize         Int?
+  width            Int?
+  height           Int?
+  checksum         String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  coverNovels      Novel[]       @relation("NovelCover")
+  siteLogos        SiteSetting[] @relation("SiteLogo")
+  siteFavicons     SiteSetting[] @relation("SiteFavicon")
+  siteSocialImages SiteSetting[] @relation("SiteSocialImage")
 
   @@unique([originalUrl])
   @@index([provider])
@@ -120,8 +123,8 @@ model Tag {
 model NovelTag {
   novelId String
   tagId   String
-  novel   Novel @relation(fields: [novelId], references: [id], onDelete: Cascade)
-  tag     Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  novel   Novel  @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([novelId, tagId])
 }
@@ -281,6 +284,26 @@ model AdPlacement {
 
   @@index([scope, scopeValue])
   @@index([location, isEnabled])
+}
+
+model SiteSetting {
+  id                 String   @id @default("default")
+  siteName           String   @default("WeAreNovelArk")
+  siteUrl            String   @default("http://localhost:3000")
+  seoTitle           String   @default("WeAreNovelArk")
+  seoDescription     String   @default("Read free romance, fantasy, werewolf, and contemporary novels.")
+  logoAssetId        String?
+  logoAsset          Asset?   @relation("SiteLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
+  faviconAssetId     String?
+  faviconAsset       Asset?   @relation("SiteFavicon", fields: [faviconAssetId], references: [id], onDelete: SetNull)
+  socialImageAssetId String?
+  socialImageAsset   Asset?   @relation("SiteSocialImage", fields: [socialImageAssetId], references: [id], onDelete: SetNull)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([logoAssetId])
+  @@index([faviconAssetId])
+  @@index([socialImageAssetId])
 }
 
 model ReadingHistory {

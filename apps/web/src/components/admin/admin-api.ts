@@ -17,3 +17,4 @@ export type AdminChapter = { id:string; number:number; slug:string; title:string
 export type AdPlacement = { id:string; name:string; key:string; scope:string; scopeValue?:string|null; location:string; codeType:string; code:string; device:string; wordInterval?:number|null; maxInsertions?:number|null; priority:number; isEnabled:boolean; startsAt?:string|null; endsAt?:string|null };
 export type ContentPage = { id:string; slug:string; title:string; contentHtml:string; updatedAt:string };
 export type Ranking = { id:string; listKey:string; position:number; label?:string|null; novelId:string; novel:{id:string;title:string;slug:string} };
+export type SiteSettings = { siteName:string; siteUrl:string; seoTitle:string; seoDescription:string; logoAssetId?:string|null; faviconAssetId?:string|null; socialImageAssetId?:string|null; logoUrl?:string|null; faviconUrl?:string|null; socialImageUrl?:string|null };

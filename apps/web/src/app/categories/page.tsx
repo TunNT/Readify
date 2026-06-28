@@ -1,8 +1,12 @@
 import { Grid3X3 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteChrome } from "../../components/site-chrome";
 import { apiFetch } from "../../lib/api";
 import type { CategoriesResponse } from "../../lib/types";
+import { getSiteSettings, pageMetadata } from "../../lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> { const settings=await getSiteSettings(); return pageMetadata(settings,{title:"Browse Categories",description:"Browse novels by genre and theme.",path:"/categories"}); }
 
 export default async function CategoriesPage() {
   const { data } = await apiFetch<CategoriesResponse>("/categories");

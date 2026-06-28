@@ -1,15 +1,17 @@
 "use client";
 
-import { BarChart3, BookOpen, ChevronLeft, LayoutDashboard, LogOut, Menu, Megaphone, Tags, Users, X } from "lucide-react";
+import { BarChart3, BookOpen, ChevronLeft, LayoutDashboard, LogOut, Menu, Megaphone, Settings, Tags, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { AdminUser } from "./admin-api";
 import styles from "./admin.module.css";
+import { SiteBrand } from "../site-settings";
 
-export type AdminSection = "dashboard"|"novels"|"categories"|"tags"|"ads"|"users";
+export type AdminSection = "dashboard"|"novels"|"categories"|"tags"|"ads"|"settings"|"users";
 const navigation: Array<{id:AdminSection;label:string;icon:typeof BookOpen;superOnly?:boolean}> = [
   {id:"dashboard",label:"Dashboard",icon:LayoutDashboard},{id:"novels",label:"Stories",icon:BookOpen},
   {id:"categories",label:"Categories",icon:Tags},{id:"tags",label:"Tags",icon:Tags},{id:"ads",label:"Ad placements",icon:Megaphone},
+  {id:"settings",label:"Site settings",icon:Settings,superOnly:true},
   {id:"users",label:"Users",icon:Users,superOnly:true}
 ];
 
@@ -18,7 +20,7 @@ export function AdminShell({user,section,onSection,onLogout,children}:{user:Admi
   const choose=(next:AdminSection)=>{onSection(next);setOpen(false);};
   return <div className={styles.adminApp}>
     <aside className={`${styles.sidebar} ${open?styles.sidebarOpen:""}`}>
-      <div className={styles.sidebarHead}><Link href="/" className={styles.adminBrand}>GoodLuckArk</Link><button className={styles.mobileClose} onClick={()=>setOpen(false)} aria-label="Close menu"><X size={19}/></button></div>
+      <div className={styles.sidebarHead}><SiteBrand className={styles.adminBrand}/><button className={styles.mobileClose} onClick={()=>setOpen(false)} aria-label="Close menu"><X size={19}/></button></div>
       <nav className={styles.adminNav}>{navigation.filter(item=>!item.superOnly||user.role==="SUPER_ADMIN").map(item=><button className={section===item.id?styles.navActive:""} onClick={()=>choose(item.id)} key={item.id}><item.icon size={17}/><span>{item.label}</span></button>)}</nav>
       <div className={styles.sidebarFooter}><div><strong>{user.displayName}</strong><span>{user.role.replaceAll("_"," ")}</span></div><button onClick={onLogout} title="Sign out" aria-label="Sign out"><LogOut size={18}/></button></div>
     </aside>

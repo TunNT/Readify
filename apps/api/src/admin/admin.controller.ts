@@ -4,7 +4,7 @@ import { UserRole } from "@prisma/client";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { AdminAuthGuard } from "../auth/auth.guard";
 import type { AuthenticatedUser } from "../auth/auth.types";
-import { AdPlacementInputDto, AdStatusInputDto, AdminListQueryDto, ChapterInputDto, ContentPageInputDto, NovelInputDto, RankingInputDto, TaxonomyInputDto, UserInputDto } from "./admin.dto";
+import { AdPlacementInputDto, AdStatusInputDto, AdminListQueryDto, ChapterInputDto, ContentPageInputDto, NovelInputDto, RankingInputDto, SiteSettingInputDto, TaxonomyInputDto, UserInputDto } from "./admin.dto";
 import { AdminService } from "./admin.service";
 
 const CONTENT_ROLES = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR];
@@ -49,6 +49,12 @@ export class AdminController {
 
   @Post("assets/covers") @Roles(...CONTENT_ROLES) @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5_000_000 } }))
   uploadCover(@UploadedFile() file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, @CurrentUser() user: AuthenticatedUser) { return this.admin.uploadCover(file, user); }
+
+  @Post("assets/site") @Roles(UserRole.SUPER_ADMIN) @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5_000_000 } }))
+  uploadSiteAsset(@UploadedFile() file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, @CurrentUser() user: AuthenticatedUser) { return this.admin.uploadSiteAsset(file, user); }
+
+  @Get("settings") @Roles(UserRole.SUPER_ADMIN) getSiteSettings() { return this.admin.getSiteSettings(); }
+  @Patch("settings") @Roles(UserRole.SUPER_ADMIN) updateSiteSettings(@Body() input: SiteSettingInputDto, @CurrentUser() user: AuthenticatedUser) { return this.admin.updateSiteSettings(input, user); }
 
   @Get("pages") @Roles(...CONTENT_ROLES) listPages() { return this.admin.listPages(); }
   @Post("pages") @Roles(...CONTENT_ROLES) createPage(@Body() input: ContentPageInputDto, @CurrentUser() user: AuthenticatedUser) { return this.admin.createPage(input, user); }
