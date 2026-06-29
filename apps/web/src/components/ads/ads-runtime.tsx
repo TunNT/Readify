@@ -11,7 +11,14 @@ export type AdPlacement = {
   wordInterval?: number | null; maxInsertions?: number | null; priority: number;
 };
 
-const AdsContext = createContext<AdPlacement[]>([]);
+type AdsContextValue = {
+  ads: AdPlacement[];
+  headReady: boolean;
+};
+
+const AdsContext = createContext<AdsContextValue>({ ads: [], headReady: false });
+const globalScriptLoads = new Map<string, Promise<void>>();
+const globalHeadPlacements = new Map<string, Promise<void>>();
 
 function pageType(path: string) {
   if (path === "/") return "HOME";
@@ -24,57 +31,154 @@ function pageType(path: string) {
   return "CONTENT_PAGE";
 }
 
-function activateScripts(container: HTMLElement) {
-  container.querySelectorAll("script").forEach((oldScript) => {
-    const script = document.createElement("script");
-    [...oldScript.attributes].forEach((attribute) => script.setAttribute(attribute.name, attribute.value));
-    script.text = oldScript.text;
-    oldScript.replaceWith(script);
+type ScriptDefinition = {
+  attributes: Array<{ name: string; value: string }>;
+  source: string;
+  text: string;
+};
+
+function scriptDefinition(script: HTMLScriptElement): ScriptDefinition {
+  return {
+    attributes: [...script.attributes].map(({ name, value }) => ({ name, value })),
+    source: script.getAttribute("src")?.trim() ?? "",
+    text: script.textContent ?? "",
+  };
+}
+
+function copyScriptAttributes(script: HTMLScriptElement, definition: ScriptDefinition) {
+  definition.attributes.forEach(({ name, value }) => {
+    if (!["async", "defer", "src"].includes(name.toLowerCase())) script.setAttribute(name, value);
   });
 }
 
-function AdCode({ ad, renderKey, target = "body" }: { ad: AdPlacement; renderKey: string; target?: "body" | "head" }) {
+function appendScript(definition: ScriptDefinition, host: HTMLElement, global: boolean) {
+  if (!definition.source) {
+    const script = document.createElement("script");
+    copyScriptAttributes(script, definition);
+    script.text = definition.text;
+    host.appendChild(script);
+    return Promise.resolve();
+  }
+
+  const source = new URL(definition.source, document.baseURI).href;
+  if (global) {
+    const existingLoad = globalScriptLoads.get(source);
+    if (existingLoad) return existingLoad;
+  }
+
+  const load = new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    copyScriptAttributes(script, definition);
+    script.async = false;
+    script.src = source;
+    if (global) script.dataset.adGlobalScript = source;
+    script.addEventListener("load", () => resolve(), { once: true });
+    script.addEventListener("error", () => reject(new Error(`Unable to load ad script: ${source}`)), { once: true });
+    host.appendChild(script);
+  });
+
+  if (global) {
+    globalScriptLoads.set(source, load);
+    load.catch(() => globalScriptLoads.delete(source));
+  }
+  return load;
+}
+
+async function appendHtmlCode(host: HTMLElement, code: string, global: boolean) {
+  const template = document.createElement("template");
+  template.innerHTML = code;
+  const scripts = [...template.content.querySelectorAll("script")].map(scriptDefinition);
+  template.content.querySelectorAll("script").forEach((script) => script.remove());
+  host.appendChild(template.content);
+  for (const script of scripts) await appendScript(script, host, global);
+}
+
+function appendHtmlMarkup(host: HTMLElement, code: string) {
+  const template = document.createElement("template");
+  template.innerHTML = code;
+  const scripts = [...template.content.querySelectorAll("script")].map(scriptDefinition);
+  template.content.querySelectorAll("script").forEach((script) => script.remove());
+  host.appendChild(template.content);
+  return scripts;
+}
+
+async function appendAdCode(host: HTMLElement, ad: AdPlacement, global: boolean) {
+  if (ad.codeType === "HTML") {
+    await appendHtmlCode(host, ad.code, global);
+    return;
+  }
+  const definition: ScriptDefinition = {
+    attributes: [],
+    source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
+    text: ad.codeType === "INLINE_JS" ? ad.code : "",
+  };
+  await appendScript(definition, host, global);
+}
+
+function loadHeadPlacement(ad: AdPlacement) {
+  const cacheKey = `${ad.id}:${ad.codeType}:${ad.code}`;
+  const existingLoad = globalHeadPlacements.get(cacheKey);
+  if (existingLoad) return existingLoad;
+
+  const load = appendAdCode(document.head, ad, true);
+  globalHeadPlacements.set(cacheKey, load);
+  load.catch(() => {
+    globalHeadPlacements.delete(cacheKey);
+  });
+  return load;
+}
+
+function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const scriptsRef = useRef<ScriptDefinition[]>([]);
+  const { headReady } = useContext(AdsContext);
   useEffect(() => {
-    const host = target === "head" ? document.head : ref.current;
+    const host = ref.current;
     if (!host) return;
-    if (target !== "head" && ref.current) ref.current.replaceChildren();
-    const marker = document.createElement(target === "head" ? "meta" : "div");
-    marker.dataset.adPlacement = ad.key;
-    marker.dataset.adRenderKey = renderKey;
-    if (ad.codeType === "EXTERNAL_SCRIPT") {
-      const script = document.createElement("script"); script.async = true; script.src = ad.code.trim(); marker.appendChild(script);
-    } else if (ad.codeType === "INLINE_JS") {
-      const script = document.createElement("script"); script.text = ad.code; marker.appendChild(script);
-    } else {
-      marker.innerHTML = ad.code; activateScripts(marker);
-    }
-    host.appendChild(marker);
-    return () => marker.remove();
-  }, [ad, renderKey, target]);
-  if (target === "head") return null;
+    host.replaceChildren();
+    scriptsRef.current = ad.codeType === "HTML"
+      ? appendHtmlMarkup(host, ad.code)
+      : [{
+          attributes: [],
+          source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
+          text: ad.codeType === "INLINE_JS" ? ad.code : "",
+        }];
+    return () => {
+      scriptsRef.current = [];
+      host.replaceChildren();
+    };
+  }, [ad, renderKey]);
+  useEffect(() => {
+    const host = ref.current;
+    if (!host || !headReady) return;
+    let active = true;
+    (async () => {
+      try {
+        for (const script of scriptsRef.current) await appendScript(script, host, false);
+      } catch (error) {
+        if (active) console.error(`[ads] ${ad.key}: ${error instanceof Error ? error.message : "Placement script failed"}`);
+      }
+    })();
+    return () => { active = false; };
+  }, [ad, headReady, renderKey]);
   return <div ref={ref} className={`${styles.slot} ${styles[ad.device.toLowerCase()]}`} data-ad-key={ad.key} aria-label="Advertisement" />;
 }
 
 export function AdSlot({ location }: { location: AdPlacement["location"] }) {
   const path = usePathname();
-  const ads = useContext(AdsContext).filter((ad) => ad.location === location);
+  const ads = useContext(AdsContext).ads.filter((ad) => ad.location === location);
   if (!ads.length) return null;
   return <div className={styles.region} data-ad-location={location.toLowerCase()}>{ads.map((ad) => <AdCode ad={ad} renderKey={`${path}:${location}:${ad.id}`} key={`${path}:${ad.id}`} />)}</div>;
-}
-
-function HeadAds() {
-  const path = usePathname();
-  const ads = useContext(AdsContext).filter((ad) => ad.location === "HEAD");
-  return <>{ads.map((ad) => <AdCode ad={ad} renderKey={`${path}:head:${ad.id}`} key={`${path}:${ad.id}`} target="head" />)}</>;
 }
 
 export function AdsRuntime({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [ads, setAds] = useState<AdPlacement[]>([]);
+  const [headReady, setHeadReady] = useState(false);
   useEffect(() => {
-    if (path.startsWith("/admin")) { setAds([]); return; }
+    if (path.startsWith("/admin")) { setAds([]); setHeadReady(false); return; }
     setAds([]);
+    setHeadReady(false);
     const controller = new AbortController();
     fetch(`/api/ads?path=${encodeURIComponent(path)}&pageType=${encodeURIComponent(pageType(path))}`, { signal: controller.signal })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Ads request failed")))
@@ -82,8 +186,24 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
       .catch((error: Error) => { if (error.name !== "AbortError") setAds([]); });
     return () => controller.abort();
   }, [path]);
-  const value = useMemo(() => ads, [ads]);
-  return <AdsContext.Provider value={value}><HeadAds /><AdSlot location="OPEN_BODY" /><AdSlot location="TOP" />{children}<AdSlot location="BOTTOM" /><AdSlot location="CLOSE_BODY" /></AdsContext.Provider>;
+  useEffect(() => {
+    if (!ads.length) return;
+    let active = true;
+    const headAds = ads.filter((ad) => ad.location === "HEAD");
+    (async () => {
+      for (const ad of headAds) {
+        try {
+          await loadHeadPlacement(ad);
+        } catch (error) {
+          console.error(`[ads] ${ad.key}: ${error instanceof Error ? error.message : "Head script failed"}`);
+        }
+      }
+      if (active) setHeadReady(true);
+    })();
+    return () => { active = false; };
+  }, [ads]);
+  const value = useMemo(() => ({ ads, headReady }), [ads, headReady]);
+  return <AdsContext.Provider value={value}><AdSlot location="OPEN_BODY" /><AdSlot location="TOP" />{children}<AdSlot location="BOTTOM" /><AdSlot location="CLOSE_BODY" /></AdsContext.Provider>;
 }
 
 type ContentSegment = { html: string; ads: AdPlacement[] };
@@ -94,7 +214,7 @@ function adPriorityRank(ad: AdPlacement) {
 
 export function InlineAdContent({ html, className }: { html: string; className: string }) {
   const path = usePathname();
-  const allAds = useContext(AdsContext);
+  const allAds = useContext(AdsContext).ads;
   const inlineAds = useMemo(() => [...allAds]
     .filter((ad) => ad.location === "INLINE" && ad.wordInterval)
     .sort((left, right) => adPriorityRank(left) - adPriorityRank(right)), [allAds]);
