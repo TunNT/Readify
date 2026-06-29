@@ -2,4 +2,16 @@
 .slot { align-items:center; display:flex; justify-content:center; max-width:100%; overflow:hidden; }
 .contentSegment { display:contents; }
 .mobile { display:none; }
+
+.region :global(#adsconex-video-container.adsconex-video-container__sticky .vjs-control-bar) {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  z-index: 20 !important;
+}
+
+.region :global(#adsconex-video-container.adsconex-video-container__sticky .vjs-control) {
+  pointer-events: auto !important;
+}
+
 @media (max-width:768px) { .desktop { display:none; } .mobile { display:flex; } }
