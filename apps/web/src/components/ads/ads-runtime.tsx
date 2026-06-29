@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import styles from "./ads.module.css";
 
@@ -14,9 +14,10 @@ export type AdPlacement = {
 type AdsContextValue = {
   ads: AdPlacement[];
   headReady: boolean;
+  markPlacementReady: (id: string) => void;
 };
 
-const AdsContext = createContext<AdsContextValue>({ ads: [], headReady: false });
+const AdsContext = createContext<AdsContextValue>({ ads: [], headReady: false, markPlacementReady: () => undefined });
 const globalScriptLoads = new Map<string, Promise<void>>();
 const globalHeadPlacements = new Map<string, Promise<void>>();
 
@@ -128,10 +129,38 @@ function loadHeadPlacement(ad: AdPlacement) {
   return load;
 }
 
+function useStickyVideoControlCompatibility() {
+  useEffect(() => {
+    const handledPlayers = new WeakSet<HTMLVideoElement>();
+    const handleFirstInteraction = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const container = target.closest("#adsconex-video-container");
+      const video = container?.querySelector<HTMLVideoElement>("video");
+      if (!video || handledPlayers.has(video)) return;
+      handledPlayers.add(video);
+      if (!target.closest(".vjs-play-control")) return;
+
+      const shouldPause = !video.paused;
+      window.setTimeout(() => {
+        if (!video.isConnected || video.paused === shouldPause) return;
+        if (shouldPause) video.pause();
+        else void video.play().catch(() => undefined);
+      }, 150);
+    };
+    document.addEventListener("touchstart", handleFirstInteraction, { capture: true, passive: true });
+    document.addEventListener("mousedown", handleFirstInteraction, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("touchstart", handleFirstInteraction, true);
+      document.removeEventListener("mousedown", handleFirstInteraction, true);
+    };
+  }, []);
+}
+
 function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const scriptsRef = useRef<ScriptDefinition[]>([]);
-  const { headReady } = useContext(AdsContext);
+  const { headReady, markPlacementReady } = useContext(AdsContext);
   useEffect(() => {
     const host = ref.current;
     if (!host) return;
@@ -143,11 +172,12 @@ function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
           source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
           text: ad.codeType === "INLINE_JS" ? ad.code : "",
         }];
+    markPlacementReady(ad.id);
     return () => {
       scriptsRef.current = [];
       host.replaceChildren();
     };
-  }, [ad, renderKey]);
+  }, [ad, markPlacementReady, renderKey]);
   useEffect(() => {
     const host = ref.current;
     if (!host || !headReady) return;
@@ -172,13 +202,24 @@ export function AdSlot({ location }: { location: AdPlacement["location"] }) {
 }
 
 export function AdsRuntime({ children }: { children: React.ReactNode }) {
+  useStickyVideoControlCompatibility();
   const path = usePathname();
   const [ads, setAds] = useState<AdPlacement[]>([]);
   const [headReady, setHeadReady] = useState(false);
+  const [readyPlacementIds, setReadyPlacementIds] = useState<Set<string>>(() => new Set());
+  const markPlacementReady = useCallback((id: string) => {
+    setReadyPlacementIds((current) => {
+      if (current.has(id)) return current;
+      const next = new Set(current);
+      next.add(id);
+      return next;
+    });
+  }, []);
   useEffect(() => {
-    if (path.startsWith("/admin")) { setAds([]); setHeadReady(false); return; }
+    if (path.startsWith("/admin")) { setAds([]); setHeadReady(false); setReadyPlacementIds(new Set()); return; }
     setAds([]);
     setHeadReady(false);
+    setReadyPlacementIds(new Set());
     const controller = new AbortController();
     fetch(`/api/ads?path=${encodeURIComponent(path)}&pageType=${encodeURIComponent(pageType(path))}`, { signal: controller.signal })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Ads request failed")))
@@ -190,6 +231,10 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
     if (!ads.length) return;
     let active = true;
     const headAds = ads.filter((ad) => ad.location === "HEAD");
+    const immediateLocations = new Set<AdPlacement["location"]>(["OPEN_BODY", "TOP", "BOTTOM", "CLOSE_BODY"]);
+    if (pageType(path) === "CHAPTER_READER") immediateLocations.add("BELOW_CHAPTER_TITLE");
+    const requiredPlacements = ads.filter((ad) => immediateLocations.has(ad.location));
+    if (headAds.length && requiredPlacements.some((ad) => !readyPlacementIds.has(ad.id))) return;
     (async () => {
       for (const ad of headAds) {
         try {
@@ -201,8 +246,8 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
       if (active) setHeadReady(true);
     })();
     return () => { active = false; };
-  }, [ads]);
-  const value = useMemo(() => ({ ads, headReady }), [ads, headReady]);
+  }, [ads, path, readyPlacementIds]);
+  const value = useMemo(() => ({ ads, headReady, markPlacementReady }), [ads, headReady, markPlacementReady]);
   return <AdsContext.Provider value={value}><AdSlot location="OPEN_BODY" /><AdSlot location="TOP" />{children}<AdSlot location="BOTTOM" /><AdSlot location="CLOSE_BODY" /></AdsContext.Provider>;
 }
 
