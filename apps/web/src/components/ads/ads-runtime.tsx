@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import styles from "./ads.module.css";
 
@@ -93,15 +93,6 @@ async function appendHtmlCode(host: HTMLElement, code: string, global: boolean) 
   for (const script of scripts) await appendScript(script, host, global);
 }
 
-function appendHtmlMarkup(host: HTMLElement, code: string) {
-  const template = document.createElement("template");
-  template.innerHTML = code;
-  const scripts = [...template.content.querySelectorAll("script")].map(scriptDefinition);
-  template.content.querySelectorAll("script").forEach((script) => script.remove());
-  host.appendChild(template.content);
-  return scripts;
-}
-
 async function appendAdCode(host: HTMLElement, ad: AdPlacement, global: boolean) {
   if (ad.codeType === "HTML") {
     await appendHtmlCode(host, ad.code, global);
@@ -128,24 +119,52 @@ function loadHeadPlacement(ad: AdPlacement) {
   return load;
 }
 
+function waitForPlacementHosts(ads: AdPlacement[], path: string, signal: AbortSignal) {
+  const immediateLocations = new Set<AdPlacement["location"]>(["OPEN_BODY", "TOP", "BOTTOM", "CLOSE_BODY"]);
+  if (pageType(path) === "CHAPTER_READER") immediateLocations.add("BELOW_CHAPTER_TITLE");
+  const requiredKeys = ads.filter((ad) => immediateLocations.has(ad.location)).map((ad) => ad.key);
+  if (!requiredKeys.length) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    const observer = new MutationObserver(() => check());
+    const finish = () => {
+      observer.disconnect();
+      signal.removeEventListener("abort", finish);
+      resolve();
+    };
+    const check = () => {
+      const mountedKeys = new Set([...document.querySelectorAll<HTMLElement>("[data-ad-key]")]
+        .map((element) => element.dataset.adKey)
+        .filter(Boolean));
+      if (requiredKeys.every((key) => mountedKeys.has(key))) finish();
+    };
+    signal.addEventListener("abort", finish, { once: true });
+    observer.observe(document.body, { childList: true, subtree: true });
+    check();
+  });
+}
+
 function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const scriptsRef = useRef<ScriptDefinition[]>([]);
   const { headReady } = useContext(AdsContext);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const host = ref.current;
     if (!host) return;
-    host.replaceChildren();
-    scriptsRef.current = ad.codeType === "HTML"
-      ? appendHtmlMarkup(host, ad.code)
-      : [{
-          attributes: [],
-          source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
-          text: ad.codeType === "INLINE_JS" ? ad.code : "",
-        }];
+    if (ad.codeType === "HTML") {
+      const scripts = [...host.querySelectorAll("script")];
+      scriptsRef.current = scripts.map(scriptDefinition);
+      scripts.forEach((script) => script.remove());
+    } else {
+      host.replaceChildren();
+      scriptsRef.current = [{
+        attributes: [],
+        source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
+        text: ad.codeType === "INLINE_JS" ? ad.code : "",
+      }];
+    }
     return () => {
       scriptsRef.current = [];
-      host.replaceChildren();
     };
   }, [ad, renderKey]);
   useEffect(() => {
@@ -161,7 +180,13 @@ function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
     })();
     return () => { active = false; };
   }, [ad, headReady, renderKey]);
-  return <div ref={ref} className={`${styles.slot} ${styles[ad.device.toLowerCase()]}`} data-ad-key={ad.key} aria-label="Advertisement" />;
+  return <div
+    ref={ref}
+    className={`${styles.slot} ${styles[ad.device.toLowerCase()]}`}
+    data-ad-key={ad.key}
+    aria-label="Advertisement"
+    dangerouslySetInnerHTML={ad.codeType === "HTML" ? { __html: ad.code } : undefined}
+  />;
 }
 
 export function AdSlot({ location }: { location: AdPlacement["location"] }) {
@@ -189,8 +214,11 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ads.length) return;
     let active = true;
+    const controller = new AbortController();
     const headAds = ads.filter((ad) => ad.location === "HEAD");
     (async () => {
+      await waitForPlacementHosts(ads, path, controller.signal);
+      if (!active) return;
       for (const ad of headAds) {
         try {
           await loadHeadPlacement(ad);
@@ -200,8 +228,8 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
       }
       if (active) setHeadReady(true);
     })();
-    return () => { active = false; };
-  }, [ads]);
+    return () => { active = false; controller.abort(); };
+  }, [ads, path]);
   const value = useMemo(() => ({ ads, headReady }), [ads, headReady]);
   return <AdsContext.Provider value={value}><AdSlot location="OPEN_BODY" /><AdSlot location="TOP" />{children}<AdSlot location="BOTTOM" /><AdSlot location="CLOSE_BODY" /></AdsContext.Provider>;
 }
