@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, List, Moon, Sun, X } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ChapterListItem, ChapterResponse, Novel } from "../lib/types";
 import { recordHistory } from "./library-actions";
@@ -26,7 +25,7 @@ export function ReaderExperience({ chapter, chapterList, novelInfo }: { chapter:
   return (
     <div className={`readerPage${dark ? " darkReader" : ""}`}>
       <header className="readerHeader"><div className="readerContainer readerHeaderInner">
-        <div><Link className="readerIconButton" href={`/novels/${chapter.novel.slug}`} title="Back to novel"><ArrowLeft size={20} /></Link><button className="readerIconButton" onClick={() => setOpen(true)} title="Chapter list"><List size={20} /></button></div>
+        <div><a className="readerIconButton" href={`/novels/${chapter.novel.slug}`} title="Back to novel"><ArrowLeft size={20} /></a><button className="readerIconButton" onClick={() => setOpen(true)} title="Chapter list"><List size={20} /></button></div>
         <SiteBrand className="readerBrand"/>
         <div><ReaderAccount compact/><button className="readerIconButton" onClick={toggleTheme} title={dark ? "Use light theme" : "Use dark theme"}>{dark ? <Sun size={20} /> : <Moon size={20} />}</button></div>
       </div></header>
