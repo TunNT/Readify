@@ -1,6 +1,7 @@
 export type VideoProviderConnection = {
   provider: string;
   root: HTMLElement;
+  floatingStrategy: "host" | "native";
   disconnect(): void;
 };
 
@@ -70,6 +71,7 @@ const adsConexAdapter: VideoProviderAdapter = {
     return {
       provider: this.key,
       root,
+      floatingStrategy: "native",
       disconnect() {
         observer.disconnect();
         removePlaybackGuard();

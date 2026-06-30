@@ -222,8 +222,8 @@ function ManagedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }
   const connectionRef = useRef<VideoProviderConnection | null>(null);
   const floatingRef = useRef(false);
   const [managedVideo, setManagedVideo] = useState(false);
+  const [floatingStrategy, setFloatingStrategy] = useState<VideoProviderConnection["floatingStrategy"] | null>(null);
   const [inlineHeight, setInlineHeight] = useState<number | null>(null);
-  const [closed, setClosed] = useState(false);
   const { headReady, markPlacementReady, activeFloatingId, activateFloating, releaseFloating } = useContext(AdsContext);
   const floating = activeFloatingId === instanceId;
   floatingRef.current = floating;
@@ -231,8 +231,8 @@ function ManagedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }
     const host = ref.current;
     if (!host) return;
     setManagedVideo(false);
+    setFloatingStrategy(null);
     setInlineHeight(null);
-    setClosed(false);
     host.replaceChildren();
     scriptsRef.current = ad.codeType === "HTML"
       ? appendHtmlMarkup(host, ad.code)
@@ -251,8 +251,9 @@ function ManagedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }
       connectionRef.current = connection;
       host.dataset.videoManaged = "true";
       setManagedVideo(true);
+      setFloatingStrategy(connection.floatingStrategy);
       const measure = () => {
-        if (floatingRef.current) return;
+        if (floatingRef.current || getComputedStyle(connection.root).position === "fixed") return;
         const height = connection.root.getBoundingClientRect().height || host.getBoundingClientRect().height;
         if (height > 0) setInlineHeight(height);
       };
@@ -288,7 +289,7 @@ function ManagedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }
     return () => { active = false; };
   }, [ad, headReady, renderKey]);
   useEffect(() => {
-    if (!managedVideo || closed) return;
+    if (!managedVideo || floatingStrategy !== "host") return;
     const anchor = anchorRef.current;
     if (!anchor) return;
     const observer = new IntersectionObserver(([entry]) => {
@@ -297,19 +298,14 @@ function ManagedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }
     }, { threshold: [0, 1] });
     observer.observe(anchor);
     return () => observer.disconnect();
-  }, [activateFloating, closed, instanceId, managedVideo, releaseFloating]);
+  }, [activateFloating, floatingStrategy, instanceId, managedVideo, releaseFloating]);
   useEffect(() => {
     const surface = connectionRef.current?.root;
     if (!floating || !surface) return;
     return constrainFloatingSurface(surface);
   }, [floating]);
-  const close = () => {
-    setClosed(true);
-    releaseFloating(instanceId);
-  };
-  return <div ref={anchorRef} className={styles.videoAnchor} style={managedVideo && !closed && inlineHeight ? { height: inlineHeight } : undefined} data-video-anchor={instanceId}>
-    <div ref={ref} className={`${styles.slot} ${managedVideo ? styles.videoRuntime : ""} ${deviceClass(ad)}`} data-ad-key={ad.key} data-video-instance={managedVideo ? instanceId : undefined} data-video-state={closed ? "closed" : floating ? "floating" : "inline"} aria-label="Advertisement" />
-    {managedVideo && floating && !closed ? <button type="button" className={styles.videoClose} onClick={close} aria-label="Close floating video">×</button> : null}
+  return <div ref={anchorRef} className={styles.videoAnchor} style={managedVideo && inlineHeight ? { height: inlineHeight } : undefined} data-video-anchor={instanceId}>
+    <div ref={ref} className={`${styles.slot} ${managedVideo ? styles.videoRuntime : ""} ${deviceClass(ad)}`} data-ad-key={ad.key} data-video-instance={managedVideo ? instanceId : undefined} data-video-state={floating ? "floating" : "inline"} aria-label="Advertisement" />
   </div>;
 }
 
