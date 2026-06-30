@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, UserRole } from "@prisma/client";
+import { load } from "cheerio";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
@@ -203,12 +204,26 @@ export class AdminService {
     if (input.scope !== "GLOBAL" && !input.scopeValue?.trim()) throw new BadRequestException("Scope value is required");
     if (input.location === "INLINE" && !input.wordInterval) throw new BadRequestException("Inline ads require a word interval");
     if (input.codeType === "EXTERNAL_SCRIPT") {
-      try { const url = new URL(input.code); if (url.protocol !== "https:") throw new Error(); }
-      catch { throw new BadRequestException("External scripts must use a valid HTTPS URL"); }
+      this.assertSecureScriptSource(input.code);
+    }
+    if (input.codeType === "HTML") {
+      const document = load(input.code, null, false);
+      document("script[src]").each((_index, element) => {
+        this.assertSecureScriptSource(document(element).attr("src") ?? "");
+      });
     }
     if (input.startsAt && input.endsAt && new Date(input.startsAt) >= new Date(input.endsAt)) throw new BadRequestException("End time must be after start time");
     const { key: _ignoredKey, isEnabled: _ignoredEnabled, ...fields } = input;
     return { ...fields, priority: input.priority ?? 1, scopeValue: input.scope === "GLOBAL" ? null : input.scopeValue, startsAt: input.startsAt ? new Date(input.startsAt) : null, endsAt: input.endsAt ? new Date(input.endsAt) : null };
+  }
+
+  private assertSecureScriptSource(source: string) {
+    try {
+      const url = new URL(source.trim(), "https://wearenovelark.invalid");
+      if (url.protocol !== "https:") throw new Error();
+    } catch {
+      throw new BadRequestException("External scripts must use a valid HTTPS or same-origin URL");
+    }
   }
 
   private async generateAdKey(input: AdPlacementInputDto) {
