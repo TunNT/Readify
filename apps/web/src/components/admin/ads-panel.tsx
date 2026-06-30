@@ -485,6 +485,7 @@ function AdEditor({
                 defaultValue={ad?.code}
                 required
               />
+              <span className={styles.helperText}>For an unknown third-party player, wrap the complete snippet in <code>&lt;div data-ad-runtime=&quot;iframe&quot;&gt;...&lt;/div&gt;</code> to isolate its DOM, CSS, and globals.</span>
             </div>
           </div>
           <div className={styles.modalFooter}>
