@@ -1,17 +1,18 @@
 .region { width:100%; }
-.slot { align-items:center; display:flex; justify-content:center; max-width:100%; overflow:hidden; }
+.slot {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+  /* AdsConex moves the player to position:fixed after its inline slot scrolls
+     away. Clipping this ancestor makes WebKit paint the fixed player but keep
+     hit-testing it against the now off-screen slot. */
+  overflow: visible;
+}
 .contentSegment { display:contents; }
 .mobile { display:none; }
 
-.region :global(#adsconex-video-container.adsconex-video-container__sticky .vjs-control-bar) {
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  visibility: visible !important;
-  z-index: 20 !important;
+@media (max-width:768px) {
+  .desktop { display:none; }
+  .mobile { display:flex; }
 }
-
-.region :global(#adsconex-video-container.adsconex-video-container__sticky .vjs-control) {
-  pointer-events: auto !important;
-}
-
-@media (max-width:768px) { .desktop { display:none; } .mobile { display:flex; } }

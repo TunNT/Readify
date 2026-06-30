@@ -18,8 +18,8 @@ type AdsContextValue = {
 };
 
 const AdsContext = createContext<AdsContextValue>({ ads: [], headReady: false, markPlacementReady: () => undefined });
-const globalScriptLoads = new Map<string, Promise<void>>();
 const globalHeadPlacements = new Map<string, Promise<void>>();
+const scriptLoadTimeoutMs = 30_000;
 
 function pageType(path: string) {
   if (path === "/") return "HOME";
@@ -38,6 +38,11 @@ type ScriptDefinition = {
   text: string;
 };
 
+type PendingScript = {
+  definition: ScriptDefinition;
+  placeholder?: Comment;
+};
+
 function scriptDefinition(script: HTMLScriptElement): ScriptDefinition {
   return {
     attributes: [...script.attributes].map(({ name, value }) => ({ name, value })),
@@ -48,72 +53,96 @@ function scriptDefinition(script: HTMLScriptElement): ScriptDefinition {
 
 function copyScriptAttributes(script: HTMLScriptElement, definition: ScriptDefinition) {
   definition.attributes.forEach(({ name, value }) => {
-    if (!["async", "defer", "src"].includes(name.toLowerCase())) script.setAttribute(name, value);
+    if (name.toLowerCase() !== "src") script.setAttribute(name, value);
   });
 }
 
-function appendScript(definition: ScriptDefinition, host: HTMLElement, global: boolean) {
+function hasScriptAttribute(definition: ScriptDefinition, name: string) {
+  return definition.attributes.some((attribute) => attribute.name.toLowerCase() === name);
+}
+
+function insertScript(script: HTMLScriptElement, pending: PendingScript, fallbackHost: HTMLElement) {
+  const placeholder = pending.placeholder;
+  if (placeholder?.parentNode) {
+    placeholder.parentNode.insertBefore(script, placeholder);
+    placeholder.remove();
+    return;
+  }
+  fallbackHost.appendChild(script);
+}
+
+function appendScript(pending: PendingScript, fallbackHost: HTMLElement) {
+  const { definition } = pending;
   if (!definition.source) {
+    const isModule = definition.attributes.some(({ name, value }) => name.toLowerCase() === "type" && value.toLowerCase() === "module");
+    if (isModule) {
+      return new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script");
+        const timeout = window.setTimeout(() => reject(new Error("Inline module ad script timed out")), scriptLoadTimeoutMs);
+        copyScriptAttributes(script, definition);
+        script.text = definition.text;
+        script.addEventListener("load", () => { window.clearTimeout(timeout); resolve(); }, { once: true });
+        script.addEventListener("error", () => { window.clearTimeout(timeout); reject(new Error("Unable to execute inline module ad script")); }, { once: true });
+        insertScript(script, pending, fallbackHost);
+      });
+    }
     const script = document.createElement("script");
     copyScriptAttributes(script, definition);
     script.text = definition.text;
-    host.appendChild(script);
+    insertScript(script, pending, fallbackHost);
     return Promise.resolve();
   }
 
   const source = new URL(definition.source, document.baseURI).href;
-  if (global) {
-    const existingLoad = globalScriptLoads.get(source);
-    if (existingLoad) return existingLoad;
-  }
-
-  const load = new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
+    const timeout = window.setTimeout(() => reject(new Error(`Ad script timed out: ${source}`)), scriptLoadTimeoutMs);
     copyScriptAttributes(script, definition);
-    script.async = false;
+    if (!hasScriptAttribute(definition, "async")) script.async = false;
     script.src = source;
-    if (global) script.dataset.adGlobalScript = source;
-    script.addEventListener("load", () => resolve(), { once: true });
-    script.addEventListener("error", () => reject(new Error(`Unable to load ad script: ${source}`)), { once: true });
-    host.appendChild(script);
+    script.addEventListener("load", () => { window.clearTimeout(timeout); resolve(); }, { once: true });
+    script.addEventListener("error", () => { window.clearTimeout(timeout); reject(new Error(`Unable to load ad script: ${source}`)); }, { once: true });
+    insertScript(script, pending, fallbackHost);
   });
-
-  if (global) {
-    globalScriptLoads.set(source, load);
-    load.catch(() => globalScriptLoads.delete(source));
-  }
-  return load;
 }
 
-async function appendHtmlCode(host: HTMLElement, code: string, global: boolean) {
-  const template = document.createElement("template");
-  template.innerHTML = code;
-  const scripts = [...template.content.querySelectorAll("script")].map(scriptDefinition);
-  template.content.querySelectorAll("script").forEach((script) => script.remove());
-  host.appendChild(template.content);
-  for (const script of scripts) await appendScript(script, host, global);
+async function executeScripts(host: HTMLElement, scripts: PendingScript[]) {
+  for (const pending of scripts) {
+    const load = appendScript(pending, host);
+    const runsAsync = Boolean(pending.definition.source) && hasScriptAttribute(pending.definition, "async");
+    if (runsAsync) {
+      void load.catch((error) => console.error(`[ads] ${error instanceof Error ? error.message : "Async script failed"}`));
+    } else {
+      await load;
+    }
+  }
 }
 
 function appendHtmlMarkup(host: HTMLElement, code: string) {
   const template = document.createElement("template");
   template.innerHTML = code;
-  const scripts = [...template.content.querySelectorAll("script")].map(scriptDefinition);
-  template.content.querySelectorAll("script").forEach((script) => script.remove());
+  const scripts = [...template.content.querySelectorAll("script")].map((script) => {
+    const placeholder = document.createComment("ad-script");
+    const definition = scriptDefinition(script);
+    script.replaceWith(placeholder);
+    return { definition, placeholder };
+  });
   host.appendChild(template.content);
   return scripts;
 }
 
-async function appendAdCode(host: HTMLElement, ad: AdPlacement, global: boolean) {
+async function appendAdCode(host: HTMLElement, ad: AdPlacement) {
   if (ad.codeType === "HTML") {
-    await appendHtmlCode(host, ad.code, global);
+    await executeScripts(host, appendHtmlMarkup(host, ad.code));
     return;
   }
-  const definition: ScriptDefinition = {
-    attributes: [],
-    source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
-    text: ad.codeType === "INLINE_JS" ? ad.code : "",
-  };
-  await appendScript(definition, host, global);
+  await executeScripts(host, [{
+    definition: {
+      attributes: [],
+      source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
+      text: ad.codeType === "INLINE_JS" ? ad.code : "",
+    },
+  }]);
 }
 
 function loadHeadPlacement(ad: AdPlacement) {
@@ -121,7 +150,7 @@ function loadHeadPlacement(ad: AdPlacement) {
   const existingLoad = globalHeadPlacements.get(cacheKey);
   if (existingLoad) return existingLoad;
 
-  const load = appendAdCode(document.head, ad, true);
+  const load = appendAdCode(document.head, ad);
   globalHeadPlacements.set(cacheKey, load);
   load.catch(() => {
     globalHeadPlacements.delete(cacheKey);
@@ -129,37 +158,9 @@ function loadHeadPlacement(ad: AdPlacement) {
   return load;
 }
 
-function useStickyVideoControlCompatibility() {
-  useEffect(() => {
-    const handledPlayers = new WeakSet<HTMLVideoElement>();
-    const handleFirstInteraction = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const container = target.closest("#adsconex-video-container");
-      const video = container?.querySelector<HTMLVideoElement>("video");
-      if (!video || handledPlayers.has(video)) return;
-      handledPlayers.add(video);
-      if (!target.closest(".vjs-play-control")) return;
-
-      const shouldPause = !video.paused;
-      window.setTimeout(() => {
-        if (!video.isConnected || video.paused === shouldPause) return;
-        if (shouldPause) video.pause();
-        else void video.play().catch(() => undefined);
-      }, 150);
-    };
-    document.addEventListener("touchstart", handleFirstInteraction, { capture: true, passive: true });
-    document.addEventListener("mousedown", handleFirstInteraction, { capture: true, passive: true });
-    return () => {
-      document.removeEventListener("touchstart", handleFirstInteraction, true);
-      document.removeEventListener("mousedown", handleFirstInteraction, true);
-    };
-  }, []);
-}
-
 function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const scriptsRef = useRef<ScriptDefinition[]>([]);
+  const scriptsRef = useRef<PendingScript[]>([]);
   const { headReady, markPlacementReady } = useContext(AdsContext);
   useEffect(() => {
     const host = ref.current;
@@ -168,9 +169,11 @@ function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
     scriptsRef.current = ad.codeType === "HTML"
       ? appendHtmlMarkup(host, ad.code)
       : [{
-          attributes: [],
-          source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
-          text: ad.codeType === "INLINE_JS" ? ad.code : "",
+          definition: {
+            attributes: [],
+            source: ad.codeType === "EXTERNAL_SCRIPT" ? ad.code.trim() : "",
+            text: ad.codeType === "INLINE_JS" ? ad.code : "",
+          },
         }];
     markPlacementReady(ad.id);
     return () => {
@@ -184,7 +187,7 @@ function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
     let active = true;
     (async () => {
       try {
-        for (const script of scriptsRef.current) await appendScript(script, host, false);
+        await executeScripts(host, scriptsRef.current);
       } catch (error) {
         if (active) console.error(`[ads] ${ad.key}: ${error instanceof Error ? error.message : "Placement script failed"}`);
       }
@@ -196,13 +199,13 @@ function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
 
 export function AdSlot({ location }: { location: AdPlacement["location"] }) {
   const path = usePathname();
-  const ads = useContext(AdsContext).ads.filter((ad) => ad.location === location);
+  const allAds = useContext(AdsContext).ads;
+  const ads = allAds.filter((ad) => ad.location === location);
   if (!ads.length) return null;
   return <div className={styles.region} data-ad-location={location.toLowerCase()}>{ads.map((ad) => <AdCode ad={ad} renderKey={`${path}:${location}:${ad.id}`} key={`${path}:${ad.id}`} />)}</div>;
 }
 
 export function AdsRuntime({ children }: { children: React.ReactNode }) {
-  useStickyVideoControlCompatibility();
   const path = usePathname();
   const [ads, setAds] = useState<AdPlacement[]>([]);
   const [headReady, setHeadReady] = useState(false);
