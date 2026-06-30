@@ -4,25 +4,12 @@
   display: flex;
   justify-content: center;
   max-width: 100%;
-  /* Legacy players may become fixed after their inline slot scrolls away.
-     Clipping this ancestor makes WebKit paint them while hit-testing against
-     the now off-screen slot. */
-  overflow: visible;
 }
 .contentSegment { display:contents; }
 .mobile { display:none; }
-.videoAnchor { max-width:100%; position:relative; width:100%; }
-.videoRuntime { isolation:isolate; max-width:100%; overflow:visible!important; }
-.videoRuntime [data-video-layer="media"] { z-index:0!important; }
-.videoRuntime [data-video-layer="ad"] { z-index:10!important; }
-.videoRuntime [data-video-layer="controls"] { z-index:20!important; }
-.videoRuntime [data-video-interactive="true"] { pointer-events:auto!important; touch-action:manipulation; }
-.videoRuntime[data-video-state="floating"] { background:#000; border-radius:8px; bottom:115px; box-shadow:0 4px 12px rgba(0,0,0,.3); display:block!important; height:145px; max-width:66%; position:fixed; right:20px; width:260px; z-index:9999; }
-.videoRuntime[data-video-state="floating"] [data-video-surface="true"] { box-sizing:border-box!important; height:100%!important; inset:0!important; margin:0!important; max-height:none!important; max-width:none!important; position:absolute!important; width:100%!important; }
 .isolatedFrame { border:0; display:block; min-height:250px; width:100%; }
 
 @media (max-width:768px) {
   .desktop { display:none; }
   .mobile { display:flex; }
-  .videoRuntime[data-video-state="floating"] { bottom:115px; right:12px; }
 }
