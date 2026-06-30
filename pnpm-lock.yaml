@@ -35,6 +35,9 @@ importers:
       '@wearenovelark/database':
         specifier: workspace:*
         version: link:../../packages/database
+      cheerio:
+        specifier: ^1.0.0
+        version: 1.2.0
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
