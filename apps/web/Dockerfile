@@ -24,7 +24,9 @@ ENV INTERNAL_API_URL=http://api:4000
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=build /app/apps/web/.next ./apps/web/.next
+COPY --from=build /app/apps/web/public ./apps/web/public
 COPY --from=build /app/apps/web/package.json ./apps/web/package.json
+COPY public/text.html ./apps/web/public/text.html
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 WORKDIR /app/apps/web
 EXPOSE 3000
