@@ -1,28 +1,14 @@
 # Ad runtime
 
-## Video provider boundary
+## Third-party ownership
 
-`video-adapters.ts` is the only place allowed to know a provider's DOM selectors
-or event quirks. An adapter detects its player, maps the provider DOM to the
-semantic attributes below, observes late DOM changes, and removes every listener
-or observer from `disconnect()`.
+The runtime treats provider markup as opaque content. It does not inspect video
+DOM, rewrite provider classes, change stacking order, or attach listeners to
+player controls. Sticky behavior, controls, Close actions, dimensions, and
+z-index remain fully owned by the provider.
 
-- `data-video-surface`: root constrained by the floating host
-- `data-video-layer="media|ad|controls"`: paint order
-- `data-video-interactive`: elements that must receive pointer/touch events
-
-To add a supported provider, implement `VideoProviderAdapter` and add it to the
-registry. Do not add provider IDs/classes to `ads.module.css`.
-
-## Runtime ownership
-
-`AdsRuntime` owns the single active floating instance. Each placement receives
-a stable instance ID and releases its observers, provider connection, and
-floating ownership when the route changes or the placement unmounts.
-
-Provider sticky geometry may be written as inline `!important`. While floating,
-the runtime temporarily constrains only the adapter's semantic surface and
-restores its original inline styles when it returns inline.
+External script URLs are loaded once per browser session. Inline initialization
+code still runs for each placement.
 
 ## Unknown third-party snippets
 

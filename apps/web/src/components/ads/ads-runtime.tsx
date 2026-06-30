@@ -1,9 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { IsolatedAdFrame, usesIsolatedFrame } from "./isolated-ad-frame";
-import { connectVideoProvider, type VideoProviderConnection } from "./video-adapters";
 import styles from "./ads.module.css";
 
 export type AdPlacement = {
@@ -17,12 +16,9 @@ type AdsContextValue = {
   ads: AdPlacement[];
   headReady: boolean;
   markPlacementReady: (id: string) => void;
-  activeFloatingId: string | null;
-  activateFloating: (id: string) => void;
-  releaseFloating: (id: string) => void;
 };
 
-const AdsContext = createContext<AdsContextValue>({ ads: [], headReady: false, markPlacementReady: () => undefined, activeFloatingId: null, activateFloating: () => undefined, releaseFloating: () => undefined });
+const AdsContext = createContext<AdsContextValue>({ ads: [], headReady: false, markPlacementReady: () => undefined });
 const globalHeadPlacements = new Map<string, Promise<void>>();
 const globalExternalScripts = new Map<string, Promise<void>>();
 const scriptLoadTimeoutMs = 30_000;
@@ -179,60 +175,13 @@ function deviceClass(ad: AdPlacement) {
   return ad.device === "ALL" ? "" : styles[ad.device.toLowerCase()];
 }
 
-const floatingSurfaceStyles = {
-  "box-sizing": "border-box",
-  bottom: "0",
-  height: "100%",
-  left: "0",
-  margin: "0",
-  "max-height": "none",
-  "max-width": "none",
-  position: "absolute",
-  right: "0",
-  top: "0",
-  width: "100%",
-} as const;
-
-/**
- * Some providers write sticky geometry as inline !important styles. A normal
- * stylesheet cannot reliably beat that cascade, so constrain only the adapter's
- * semantic surface while it belongs to our floating layer, then restore it.
- */
-function constrainFloatingSurface(surface: HTMLElement) {
-  const previous = Object.keys(floatingSurfaceStyles).map((property) => ({
-    property,
-    priority: surface.style.getPropertyPriority(property),
-    value: surface.style.getPropertyValue(property),
-  }));
-  Object.entries(floatingSurfaceStyles).forEach(([property, value]) => {
-    surface.style.setProperty(property, value, "important");
-  });
-  return () => previous.forEach(({ property, priority, value }) => {
-    if (value) surface.style.setProperty(property, value, priority);
-    else surface.style.removeProperty(property);
-  });
-}
-
-function ManagedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
-  const reactId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const instanceId = `video-${ad.id}-${reactId}`;
-  const anchorRef = useRef<HTMLDivElement>(null);
+function InjectedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const scriptsRef = useRef<PendingScript[]>([]);
-  const connectionRef = useRef<VideoProviderConnection | null>(null);
-  const floatingRef = useRef(false);
-  const [managedVideo, setManagedVideo] = useState(false);
-  const [floatingStrategy, setFloatingStrategy] = useState<VideoProviderConnection["floatingStrategy"] | null>(null);
-  const [inlineHeight, setInlineHeight] = useState<number | null>(null);
-  const { headReady, markPlacementReady, activeFloatingId, activateFloating, releaseFloating } = useContext(AdsContext);
-  const floating = activeFloatingId === instanceId;
-  floatingRef.current = floating;
+  const { headReady, markPlacementReady } = useContext(AdsContext);
   useEffect(() => {
     const host = ref.current;
     if (!host) return;
-    setManagedVideo(false);
-    setFloatingStrategy(null);
-    setInlineHeight(null);
     host.replaceChildren();
     scriptsRef.current = ad.codeType === "HTML"
       ? appendHtmlMarkup(host, ad.code)
@@ -243,38 +192,12 @@ function ManagedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }
             text: ad.codeType === "INLINE_JS" ? ad.code : "",
           },
         }];
-    let resizeObserver: ResizeObserver | undefined;
-    const connect = () => {
-      if (connectionRef.current) return;
-      const connection = connectVideoProvider(host);
-      if (!connection) return;
-      connectionRef.current = connection;
-      host.dataset.videoManaged = "true";
-      setManagedVideo(true);
-      setFloatingStrategy(connection.floatingStrategy);
-      const measure = () => {
-        if (floatingRef.current || getComputedStyle(connection.root).position === "fixed") return;
-        const height = connection.root.getBoundingClientRect().height || host.getBoundingClientRect().height;
-        if (height > 0) setInlineHeight(height);
-      };
-      resizeObserver = new ResizeObserver(measure);
-      resizeObserver.observe(connection.root);
-      measure();
-    };
-    const detector = new MutationObserver(connect);
-    detector.observe(host, { childList: true, subtree: true });
-    connect();
     markPlacementReady(ad.id);
     return () => {
-      detector.disconnect();
-      resizeObserver?.disconnect();
-      connectionRef.current?.disconnect();
-      connectionRef.current = null;
-      releaseFloating(instanceId);
       scriptsRef.current = [];
       host.replaceChildren();
     };
-  }, [ad, instanceId, markPlacementReady, releaseFloating, renderKey]);
+  }, [ad, markPlacementReady, renderKey]);
   useEffect(() => {
     const host = ref.current;
     if (!host || !headReady) return;
@@ -288,25 +211,7 @@ function ManagedAdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }
     })();
     return () => { active = false; };
   }, [ad, headReady, renderKey]);
-  useEffect(() => {
-    if (!managedVideo || floatingStrategy !== "host") return;
-    const anchor = anchorRef.current;
-    if (!anchor) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.boundingClientRect.bottom < 0) activateFloating(instanceId);
-      else if (entry.boundingClientRect.top >= 0) releaseFloating(instanceId);
-    }, { threshold: [0, 1] });
-    observer.observe(anchor);
-    return () => observer.disconnect();
-  }, [activateFloating, floatingStrategy, instanceId, managedVideo, releaseFloating]);
-  useEffect(() => {
-    const surface = connectionRef.current?.root;
-    if (!floating || !surface) return;
-    return constrainFloatingSurface(surface);
-  }, [floating]);
-  return <div ref={anchorRef} className={styles.videoAnchor} style={managedVideo && inlineHeight ? { height: inlineHeight } : undefined} data-video-anchor={instanceId}>
-    <div ref={ref} className={`${styles.slot} ${managedVideo ? styles.videoRuntime : ""} ${deviceClass(ad)}`} data-ad-key={ad.key} data-video-instance={managedVideo ? instanceId : undefined} data-video-state={floating ? "floating" : "inline"} aria-label="Advertisement" />
-  </div>;
+  return <div ref={ref} className={`${styles.slot} ${deviceClass(ad)}`} data-ad-key={ad.key} aria-label="Advertisement" />;
 }
 
 function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
@@ -315,7 +220,7 @@ function AdCode({ ad, renderKey }: { ad: AdPlacement; renderKey: string }) {
   useEffect(() => {
     if (isolated) markPlacementReady(ad.id);
   }, [ad.id, isolated, markPlacementReady]);
-  return isolated ? <IsolatedAdFrame ad={ad} /> : <ManagedAdCode ad={ad} renderKey={renderKey} />;
+  return isolated ? <IsolatedAdFrame ad={ad} /> : <InjectedAdCode ad={ad} renderKey={renderKey} />;
 }
 
 export function AdSlot({ location }: { location: AdPlacement["location"] }) {
@@ -331,7 +236,6 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
   const [ads, setAds] = useState<AdPlacement[]>([]);
   const [headReady, setHeadReady] = useState(false);
   const [readyPlacementIds, setReadyPlacementIds] = useState<Set<string>>(() => new Set());
-  const [activeFloatingId, setActiveFloatingId] = useState<string | null>(null);
   const markPlacementReady = useCallback((id: string) => {
     setReadyPlacementIds((current) => {
       if (current.has(id)) return current;
@@ -340,8 +244,6 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
-  const activateFloating = useCallback((id: string) => setActiveFloatingId(id), []);
-  const releaseFloating = useCallback((id: string) => setActiveFloatingId((current) => current === id ? null : current), []);
   useEffect(() => {
     if (path.startsWith("/admin")) { setAds([]); setHeadReady(false); setReadyPlacementIds(new Set()); return; }
     setAds([]);
@@ -374,7 +276,7 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
     })();
     return () => { active = false; };
   }, [ads, path, readyPlacementIds]);
-  const value = useMemo(() => ({ ads, headReady, markPlacementReady, activeFloatingId, activateFloating, releaseFloating }), [ads, headReady, markPlacementReady, activeFloatingId, activateFloating, releaseFloating]);
+  const value = useMemo(() => ({ ads, headReady, markPlacementReady }), [ads, headReady, markPlacementReady]);
   return <AdsContext.Provider value={value}><AdSlot location="OPEN_BODY" /><AdSlot location="TOP" />{children}<AdSlot location="BOTTOM" /><AdSlot location="CLOSE_BODY" /></AdsContext.Provider>;
 }
 
