@@ -134,9 +134,9 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid 
 .readerNovelTitle { color: var(--reader-muted); font-size: 13px; margin: 0 0 3px; }
 .readerMain h1 { font-size: 24px; letter-spacing: 0; margin: 0 0 20px; }
 .readerContent { line-height: 1.75; text-align: justify; }
-.readerContent.font-small { font-size: 16px; }
-.readerContent.font-medium { font-size: 18px; }
-.readerContent.font-large { font-size: 20px; }
+.readerContent.font-small { font-size: 18px; }
+.readerContent.font-medium { font-size: 20px; }
+.readerContent.font-large { font-size: 22px; }
 .readerContent p { margin: 0 0 20px; }
 .readerUnavailable { align-items: center; background: var(--reader-surface); border: 1px solid var(--reader-border); border-radius: 8px; display: flex; flex-direction: column; min-height: 280px; justify-content: center; padding: 30px; text-align: center; }
 .readerUnavailable h2 { font-size: 19px; margin: 10px 0 4px; }
@@ -215,8 +215,8 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid 
   .pagination strong { font-size: 11px; }
   .pagination a, .pagination span { font-size: 12px; padding: 7px; }
   .readerContainer { padding-left: 15px; padding-right: 15px; }
-  .readerContent.font-small { font-size: 15px; }
-  .readerContent.font-medium { font-size: 16px; }
+  .readerContent.font-small { font-size: 17px; }
+  .readerContent.font-medium { font-size: 18px; }
   .readerContent.font-large { font-size: 19px; }
   .readerSidebar { left: -85%; width: 85%; }
   .readerNavButton { font-size: 13px; padding: 8px 11px; }
