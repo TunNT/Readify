@@ -12,14 +12,15 @@ export function presentSiteSetting(setting: {
   siteUrl: string;
   seoTitle: string;
   seoDescription: string;
+  adsTxtContent: string;
   logoAssetId: string | null;
   faviconAssetId: string | null;
   socialImageAssetId: string | null;
   logoAsset: { publicUrl: string | null } | null;
   faviconAsset: { publicUrl: string | null } | null;
   socialImageAsset: { publicUrl: string | null } | null;
-}) {
-  return {
+}, options: { includeAdsTxt?: boolean } = {}) {
+  const data = {
     siteName: setting.siteName,
     siteUrl: setting.siteUrl,
     seoTitle: setting.seoTitle,
@@ -31,6 +32,7 @@ export function presentSiteSetting(setting: {
     faviconUrl: setting.faviconAsset?.publicUrl ?? null,
     socialImageUrl: setting.socialImageAsset?.publicUrl ?? null
   };
+  return options.includeAdsTxt ? { ...data, adsTxtContent: setting.adsTxtContent } : data;
 }
 
 @Injectable()
@@ -45,6 +47,16 @@ export class SettingsService {
       include: siteSettingInclude
     });
     return { data: presentSiteSetting(setting) };
+  }
+
+  async getAdsTxtContent() {
+    const setting = await this.prisma.siteSetting.upsert({
+      where: { id: "default" },
+      update: {},
+      create: { id: "default" },
+      select: { adsTxtContent: true }
+    });
+    return setting.adsTxtContent;
   }
 
   async getSitemapEntries() {

@@ -1,0 +1,2 @@
+ALTER TABLE "SiteSetting"
+ADD COLUMN "adsTxtContent" TEXT NOT NULL DEFAULT '';

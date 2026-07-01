@@ -292,6 +292,7 @@ model SiteSetting {
   siteUrl            String   @default("http://localhost:3000")
   seoTitle           String   @default("WeAreNovelArk")
   seoDescription     String   @default("Read free romance, fantasy, werewolf, and contemporary novels.")
+  adsTxtContent      String   @default("") @db.Text
   logoAssetId        String?
   logoAsset          Asset?   @relation("SiteLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
   faviconAssetId     String?

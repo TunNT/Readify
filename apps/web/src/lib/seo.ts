@@ -7,6 +7,7 @@ export const fallbackSiteSettings: SiteSettings = {
   siteUrl: "http://localhost:3000",
   seoTitle: "WeAreNovelArk",
   seoDescription: "Read free romance, fantasy, werewolf, and contemporary novels.",
+  adsTxtContent: "",
   logoUrl: null,
   faviconUrl: null,
   socialImageUrl: null

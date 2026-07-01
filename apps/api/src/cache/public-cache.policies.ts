@@ -2,6 +2,7 @@ import type { PublicCachePolicy } from "./public-cache.decorator";
 
 export const PUBLIC_CACHE = {
   ads: { namespace: "ads", originTtl: 60, browserTtl: 30, edgeTtl: 60, staleWhileRevalidate: 30 },
+  adsTxt: { namespace: "settings", originTtl: 300, browserTtl: 300, edgeTtl: 300, staleWhileRevalidate: 600 },
   categories: { namespace: "catalog", originTtl: 900, browserTtl: 300, edgeTtl: 1800 },
   category: { namespace: "catalog", originTtl: 300, browserTtl: 60, edgeTtl: 600 },
   chapter: { namespace: "catalog", originTtl: 3600, browserTtl: 300, edgeTtl: 3600, staleWhileRevalidate: 600 },
