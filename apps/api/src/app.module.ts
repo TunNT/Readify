@@ -9,6 +9,7 @@ import { AdminModule } from "./admin/admin.module";
 import { AdsModule } from "./ads/ads.module";
 import { AuthModule } from "./auth/auth.module";
 import { SettingsModule } from "./settings/settings.module";
+import { PublicCacheModule } from "./cache/public-cache.module";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SettingsModule } from "./settings/settings.module";
       serveRoot: "/covers"
     }),
     PrismaModule,
+    PublicCacheModule,
     AuthModule,
     AdminModule,
     AdsModule,
