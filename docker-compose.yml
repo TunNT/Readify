@@ -15,6 +15,15 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   api:
     build:
       context: .
@@ -24,6 +33,7 @@ services:
       API_PORT: 4000
       API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:4000}
       DATABASE_URL: postgresql://${POSTGRES_USER:-novelark}:${POSTGRES_PASSWORD:-novelark_password}@db:5432/${POSTGRES_DB:-novelark}?schema=public
+      REDIS_URL: redis://redis:6379
       WEB_ORIGIN: http://localhost:${WEB_PORT:-3000}
       ADMIN_SESSION_DAYS: ${ADMIN_SESSION_DAYS:-7}
       ADMIN_COOKIE_SECURE: ${ADMIN_COOKIE_SECURE:-false}
@@ -45,6 +55,8 @@ services:
       - ./storage/covers:/app/storage/covers
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   web:

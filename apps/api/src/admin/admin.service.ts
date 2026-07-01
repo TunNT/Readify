@@ -9,6 +9,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { hashPassword } from "../auth/password";
 import { presentSiteSetting, siteSettingInclude } from "../settings/settings.service";
+import type { CacheNamespace } from "../cache/public-cache.decorator";
+import { PublicCacheService } from "../cache/public-cache.service";
 import { AdPlacementInputDto, AdminListQueryDto, ChapterInputDto, ContentPageInputDto, NovelInputDto, RankingInputDto, SiteSettingInputDto, TaxonomyInputDto, UserInputDto } from "./admin.dto";
 
 type UploadedCover = { originalname: string; mimetype: string; size: number; buffer: Buffer };
@@ -30,7 +32,7 @@ function isUniqueConstraintError(error: unknown, field: string) {
 @Injectable()
 export class AdminService {
   private readonly coverPath: string;
-  constructor(private readonly prisma: PrismaService, config: ConfigService) {
+  constructor(private readonly prisma: PrismaService, private readonly cache: PublicCacheService, config: ConfigService) {
     this.coverPath = config.get<string>("LOCAL_ASSET_BASE_PATH", "storage/covers");
   }
 
@@ -79,6 +81,7 @@ export class AdminService {
         tags: input.tagIds?.length ? { create: input.tagIds.map((tagId) => ({ tagId })) } : undefined
       } });
       await this.audit(user, "CREATE", "Novel", data.id, { title: data.title });
+      await this.invalidate("catalog", "home", "seo");
       return { data };
     } catch (error) {
       if (isUniqueConstraintError(error, "slug")) throw new ConflictException("A story with this slug already exists. Choose another slug or edit the existing story.");
@@ -97,6 +100,7 @@ export class AdminService {
         ...(tagIds ? { tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) } } : {})
       } });
       await this.audit(user, "UPDATE", "Novel", id, { fields: Object.keys(input) });
+      await this.invalidate("catalog", "home", "seo");
       return { data };
     } catch (error) {
       if (isUniqueConstraintError(error, "slug")) throw new ConflictException("A story with this slug already exists. Choose another slug or edit the existing story.");
@@ -107,6 +111,7 @@ export class AdminService {
   async deleteNovel(id: string, user: AuthenticatedUser) {
     const data = await this.prisma.novel.update({ where: { id }, data: { deletedAt: new Date(), isPublished: false } });
     await this.audit(user, "DELETE", "Novel", id, { softDelete: true });
+    await this.invalidate("catalog", "home", "seo");
     return { data };
   }
 
@@ -115,6 +120,7 @@ export class AdminService {
     const data = await this.prisma.chapter.create({ data: { novelId, number: input.number, slug: input.slug, title: input.title, content: input.content ?? "", excerpt: input.excerpt ?? "", publishedAt: input.publishedAt ? new Date(input.publishedAt) : null } });
     await this.syncChapterCount(novelId);
     await this.audit(user, "CREATE", "Chapter", data.id, { novelId, number: data.number });
+    await this.invalidate("catalog", "home", "seo");
     return { data };
   }
 
@@ -122,6 +128,7 @@ export class AdminService {
     const { publishedAt, ...fields } = input;
     const data = await this.prisma.chapter.update({ where: { id }, data: { ...fields, ...(publishedAt !== undefined ? { publishedAt: publishedAt ? new Date(publishedAt) : null } : {}) } });
     await this.audit(user, "UPDATE", "Chapter", id, { fields: Object.keys(input) });
+    await this.invalidate("catalog", "home", "seo");
     return { data };
   }
 
@@ -129,6 +136,7 @@ export class AdminService {
     const chapter = await this.prisma.chapter.delete({ where: { id } });
     await this.syncChapterCount(chapter.novelId);
     await this.audit(user, "DELETE", "Chapter", id);
+    await this.invalidate("catalog", "home", "seo");
     return { data: { id } };
   }
 
@@ -142,18 +150,21 @@ export class AdminService {
   async createTaxonomy(type: "category" | "tag", input: TaxonomyInputDto, user: AuthenticatedUser) {
     const data = type === "category" ? await this.prisma.category.create({ data: input }) : await this.prisma.tag.create({ data: { name: input.name, slug: input.slug } });
     await this.audit(user, "CREATE", type === "category" ? "Category" : "Tag", data.id, { name: data.name });
+    await this.invalidate("catalog", "home");
     return { data };
   }
 
   async updateTaxonomy(type: "category" | "tag", id: string, input: TaxonomyInputDto, user: AuthenticatedUser) {
     const data = type === "category" ? await this.prisma.category.update({ where: { id }, data: input }) : await this.prisma.tag.update({ where: { id }, data: { name: input.name, slug: input.slug } });
     await this.audit(user, "UPDATE", type === "category" ? "Category" : "Tag", id);
+    await this.invalidate("catalog", "home");
     return { data };
   }
 
   async deleteTaxonomy(type: "category" | "tag", id: string, user: AuthenticatedUser) {
     if (type === "category") await this.prisma.category.delete({ where: { id } }); else await this.prisma.tag.delete({ where: { id } });
     await this.audit(user, "DELETE", type === "category" ? "Category" : "Tag", id);
+    await this.invalidate("catalog", "home");
     return { data: { id } };
   }
 
@@ -186,19 +197,27 @@ export class AdminService {
   async createAd(input: AdPlacementInputDto, user: AuthenticatedUser) {
     const key = await this.generateAdKey(input);
     const data = await this.prisma.adPlacement.create({ data: { ...this.adData(input), key, isEnabled: true } });
-    await this.audit(user, "CREATE", "AdPlacement", data.id, { key: data.key }); return { data };
+    await this.audit(user, "CREATE", "AdPlacement", data.id, { key: data.key });
+    await this.invalidate("ads");
+    return { data };
   }
   async updateAd(id: string, input: AdPlacementInputDto, user: AuthenticatedUser) {
     const data = await this.prisma.adPlacement.update({ where: { id }, data: this.adData(input) });
-    await this.audit(user, "UPDATE", "AdPlacement", id, { key: data.key }); return { data };
+    await this.audit(user, "UPDATE", "AdPlacement", id, { key: data.key });
+    await this.invalidate("ads");
+    return { data };
   }
   async updateAdStatus(id: string, isEnabled: boolean, user: AuthenticatedUser) {
     const data = await this.prisma.adPlacement.update({ where: { id }, data: { isEnabled } });
     await this.audit(user, isEnabled ? "ENABLE" : "DISABLE", "AdPlacement", id, { key: data.key });
+    await this.invalidate("ads");
     return { data };
   }
   async deleteAd(id: string, user: AuthenticatedUser) {
-    await this.prisma.adPlacement.delete({ where: { id } }); await this.audit(user, "DELETE", "AdPlacement", id); return { data: { id } };
+    await this.prisma.adPlacement.delete({ where: { id } });
+    await this.audit(user, "DELETE", "AdPlacement", id);
+    await this.invalidate("ads");
+    return { data: { id } };
   }
   private adData(input: AdPlacementInputDto) {
     if (input.scope !== "GLOBAL" && !input.scopeValue?.trim()) throw new BadRequestException("Scope value is required");
@@ -275,28 +294,45 @@ export class AdminService {
       include: siteSettingInclude
     });
     await this.audit(user, "UPDATE", "SiteSetting", setting.id, { fields: Object.keys(input) });
+    await this.invalidate("settings");
     return { data: presentSiteSetting(setting) };
   }
 
   async listPages() { return { data: await this.prisma.contentPage.findMany({ orderBy: { title: "asc" } }) }; }
   async createPage(input: ContentPageInputDto, user: AuthenticatedUser) {
     const data = await this.prisma.contentPage.create({ data: { ...input, sourceUrl: `admin://${input.slug}` } });
-    await this.audit(user, "CREATE", "ContentPage", data.id, { slug: data.slug }); return { data };
+    await this.audit(user, "CREATE", "ContentPage", data.id, { slug: data.slug });
+    await this.invalidate("pages");
+    return { data };
   }
   async updatePage(id: string, input: ContentPageInputDto, user: AuthenticatedUser) {
     const data = await this.prisma.contentPage.update({ where: { id }, data: input });
-    await this.audit(user, "UPDATE", "ContentPage", id, { slug: data.slug }); return { data };
+    await this.audit(user, "UPDATE", "ContentPage", id, { slug: data.slug });
+    await this.invalidate("pages");
+    return { data };
   }
   async deletePage(id: string, user: AuthenticatedUser) {
-    await this.prisma.contentPage.delete({ where: { id } }); await this.audit(user, "DELETE", "ContentPage", id); return { data: { id } };
+    await this.prisma.contentPage.delete({ where: { id } });
+    await this.audit(user, "DELETE", "ContentPage", id);
+    await this.invalidate("pages");
+    return { data: { id } };
   }
 
   async listRankings() { return { data: await this.prisma.ranking.findMany({ orderBy: [{ listKey: "asc" }, { position: "asc" }], include: { novel: { select: { id: true, title: true, slug: true } } } }) }; }
   async saveRanking(input: RankingInputDto, user: AuthenticatedUser) {
     const data = await this.prisma.ranking.upsert({ where: { listKey_position: { listKey: input.listKey, position: input.position } }, update: { novelId: input.novelId, label: input.label }, create: input });
-    await this.audit(user, "UPSERT", "Ranking", data.id, { listKey: data.listKey, position: data.position }); return { data };
+    await this.audit(user, "UPSERT", "Ranking", data.id, { listKey: data.listKey, position: data.position });
+    await this.invalidate("home", "rankings");
+    return { data };
   }
   async deleteRanking(id: string, user: AuthenticatedUser) {
-    await this.prisma.ranking.delete({ where: { id } }); await this.audit(user, "DELETE", "Ranking", id); return { data: { id } };
+    await this.prisma.ranking.delete({ where: { id } });
+    await this.audit(user, "DELETE", "Ranking", id);
+    await this.invalidate("home", "rankings");
+    return { data: { id } };
+  }
+
+  private invalidate(...namespaces: CacheNamespace[]) {
+    return this.cache.invalidate(...namespaces);
   }
 }
