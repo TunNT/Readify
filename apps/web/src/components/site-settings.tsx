@@ -4,7 +4,7 @@ import Link from "next/link";
 import { createContext, useContext } from "react";
 import type { SiteSettings } from "../lib/types";
 
-const SiteSettingsContext = createContext<SiteSettings>({ siteName:"WeAreNovelArk",siteUrl:"http://localhost:3000",seoTitle:"WeAreNovelArk",seoDescription:"Read free novels online.",logoUrl:null,faviconUrl:null,socialImageUrl:null });
+const SiteSettingsContext = createContext<SiteSettings>({ siteName:"WeAreNovelArk",siteUrl:"http://localhost:3000",seoTitle:"WeAreNovelArk",seoDescription:"Read free novels online.",adsTxtContent:"",logoUrl:null,faviconUrl:null,socialImageUrl:null });
 
 export function SiteSettingsProvider({ settings, children }: { settings: SiteSettings; children: React.ReactNode }) {
   return <SiteSettingsContext.Provider value={settings}>{children}</SiteSettingsContext.Provider>;

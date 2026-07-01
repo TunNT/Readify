@@ -283,7 +283,7 @@ export class AdminService {
 
   async getSiteSettings() {
     const setting = await this.prisma.siteSetting.upsert({ where: { id: "default" }, update: {}, create: { id: "default" }, include: siteSettingInclude });
-    return { data: presentSiteSetting(setting) };
+    return { data: presentSiteSetting(setting, { includeAdsTxt: true }) };
   }
 
   async updateSiteSettings(input: SiteSettingInputDto, user: AuthenticatedUser) {
@@ -295,7 +295,7 @@ export class AdminService {
     });
     await this.audit(user, "UPDATE", "SiteSetting", setting.id, { fields: Object.keys(input) });
     await this.invalidate("settings");
-    return { data: presentSiteSetting(setting) };
+    return { data: presentSiteSetting(setting, { includeAdsTxt: true }) };
   }
 
   async listPages() { return { data: await this.prisma.contentPage.findMany({ orderBy: { title: "asc" } }) }; }

@@ -72,6 +72,7 @@ export class SiteSettingInputDto {
   @IsUrl({ require_tld: false, require_protocol: true }) @MaxLength(500) siteUrl!: string;
   @IsString() @MinLength(1) @MaxLength(160) seoTitle!: string;
   @IsString() @MinLength(1) @MaxLength(320) seoDescription!: string;
+  @IsString() @MaxLength(100_000) @IsOptional() adsTxtContent?: string;
   @IsString() @IsOptional() logoAssetId?: string | null;
   @IsString() @IsOptional() faviconAssetId?: string | null;
   @IsString() @IsOptional() socialImageAssetId?: string | null;

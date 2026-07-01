@@ -25,6 +25,12 @@ export async function apiFetch<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export async function apiFetchText(path: string): Promise<string> {
+  const response = await fetch(`${serverApiUrl}/api${path}`, { cache: "no-store" });
+  if (!response.ok) throw new ApiError(response.status, `API request failed with ${response.status}`);
+  return response.text();
+}
+
 export function proxiedCoverUrl(coverUrl?: string | null) {
   if (!coverUrl) return "/covers/placeholder.svg";
   try {

@@ -82,6 +82,7 @@ export type SiteSettings = {
   siteUrl: string;
   seoTitle: string;
   seoDescription: string;
+  adsTxtContent?: string;
   logoAssetId?: string | null;
   faviconAssetId?: string | null;
   socialImageAssetId?: string | null;
