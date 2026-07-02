@@ -11,6 +11,7 @@ RUN pnpm install --filter @wearenovelark/api... --filter @wearenovelark/database
 
 FROM deps AS build
 RUN apk add --no-cache openssl
+COPY tsconfig.base.json nest-cli.json* package.json ./
 COPY apps/api apps/api
 COPY packages/database packages/database
 RUN pnpm --filter @wearenovelark/database prisma:generate
