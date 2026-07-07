@@ -29,6 +29,7 @@ export function ReaderExperience({ chapter, chapterList, novelInfo }: { chapter:
         <SiteBrand className="readerBrand"/>
         <div><ReaderAccount compact/><button className="readerIconButton" onClick={toggleTheme} title={dark ? "Use light theme" : "Use dark theme"}>{dark ? <Sun size={20} /> : <Moon size={20} />}</button></div>
       </div></header>
+      <AdSlot location="TOP" />
       <main className="readerContainer readerMain">
         <p className="readerNovelTitle">{chapter.novel.title}</p><h1>{chapter.title}</h1>
         <AdSlot location="BELOW_CHAPTER_TITLE" />
