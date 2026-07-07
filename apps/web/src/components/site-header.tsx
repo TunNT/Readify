@@ -2,6 +2,7 @@ import { BookOpen, Home, Library, Search } from "lucide-react";
 import Link from "next/link";
 import { ReaderAccount } from "./reader-account";
 import { SiteBrand } from "./site-settings";
+import { AdSlot } from "./ads/ads-runtime";
 
 export function SiteHeader() {
   return (
@@ -20,6 +21,7 @@ export function SiteHeader() {
           <ReaderAccount />
         </div>
       </header>
+      <AdSlot location="TOP" />
       <nav className="mobileNav" aria-label="Mobile navigation">
         <Link href="/"><Home size={20} /><span>Home</span></Link>
         <Link href="/novels"><BookOpen size={20} /><span>Novels</span></Link>

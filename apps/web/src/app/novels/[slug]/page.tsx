@@ -7,6 +7,7 @@ import { TrackNovelVisit } from "../../../components/library-actions";
 import { BackButton } from "../../../components/novel-detail/back-button";
 import { ReaderAccount } from "../../../components/reader-account";
 import { SiteBrand } from "../../../components/site-settings";
+import { AdSlot } from "../../../components/ads/ads-runtime";
 import styles from "../../../components/novel-detail/detail.module.css";
 import { ApiError, apiFetch, proxiedCoverUrl } from "../../../lib/api";
 import { absoluteSiteUrl, getSiteSettings, jsonLd, pageMetadata } from "../../../lib/seo";
@@ -36,6 +37,7 @@ export default async function NovelDetailPage({ params, searchParams }: { params
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }} />
       <TrackNovelVisit novel={novel} />
       <header className={styles.header}><div className={styles.navContainer}><div className={styles.navButtons}><BackButton /><Link href="/" className={styles.navButton}><Home size={15} /> Home</Link></div><SiteBrand className={styles.logo}/><div className={styles.navButtons}><Link href="/library" className={styles.navButton}><Bookmark size={15} /> Library</Link><ReaderAccount /></div></div></header>
+      <AdSlot location="TOP" />
       <main className={styles.container}>
         <section className={styles.bookHeader}><div className={styles.bookCover}><img src={proxiedCoverUrl(novel.coverUrl)} alt={novel.title} /></div><div className={styles.bookInfo}><h1 className={styles.bookTitle}>{novel.title}</h1><p className={styles.bookAuthor}>By {novel.authorName || "Unknown Author"}</p><div className={styles.bookMeta}>{novel.categories.map((category) => <Link className={styles.metaItem} href={`/category/${category.slug}`} key={category.slug}>{category.name}</Link>)}{novel.tags?.map((tag) => <span className={styles.metaItem} key={`tag-${tag.slug}`}>{tag.name}</span>)}<span className={styles.metaItem}>{novel.rating.average.toFixed(1)} ★★★★★</span><span className={styles.metaItem}>{novel.status.toLowerCase()}</span><span className={styles.metaItem}>{novel.chapterCount} Chapters</span></div>{novel.description ? <p className={styles.descriptionText}>{novel.description}</p> : null}<div className={styles.actionButtons}>{novel.firstChapter ? <a className={styles.primaryButton} href={`/novels/${novel.slug}/${novel.firstChapter.slug}`}>Start Reading</a> : null}</div></div></section>
         {novel.description ? <section className={styles.bookDescription}><h2 className={styles.sectionTitle}>Synopsis</h2><p className={styles.descriptionText}>{novel.description}</p></section> : null}

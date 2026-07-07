@@ -277,7 +277,7 @@ export function AdsRuntime({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [ads, path, readyPlacementIds]);
   const value = useMemo(() => ({ ads, headReady, markPlacementReady }), [ads, headReady, markPlacementReady]);
-  return <AdsContext.Provider value={value}><AdSlot location="OPEN_BODY" /><AdSlot location="TOP" />{children}<AdSlot location="BOTTOM" /><AdSlot location="CLOSE_BODY" /></AdsContext.Provider>;
+  return <AdsContext.Provider value={value}><AdSlot location="OPEN_BODY" />{children}<AdSlot location="BOTTOM" /><AdSlot location="CLOSE_BODY" /></AdsContext.Provider>;
 }
 
 type ContentSegment = { html: string; ads: AdPlacement[] };
