@@ -42,7 +42,9 @@ export class AdminService {
 
   async dashboard() {
     const [novels, chapters, categories, tags, users, ads, recent] = await Promise.all([
-      this.prisma.novel.count({ where: { deletedAt: null } }), this.prisma.chapter.count(), this.prisma.category.count(),
+      this.prisma.novel.count({ where: { deletedAt: null } }),
+      this.prisma.chapter.count({ where: { novel: { deletedAt: null } } }),
+      this.prisma.category.count(),
       this.prisma.tag.count(), this.prisma.user.count(), this.prisma.adPlacement.count(),
       this.prisma.auditLog.findMany({ take: 12, orderBy: { createdAt: "desc" }, include: { user: { select: { displayName: true } } } })
     ]);
@@ -72,10 +74,12 @@ export class AdminService {
   }
 
   async createNovel(input: NovelInputDto, user: AuthenticatedUser) {
-    if (!input.title || !input.slug) throw new BadRequestException("Title and slug are required");
+    if (!input.title) throw new BadRequestException("Title is required");
+    const slug = input.slug && input.slug.trim() !== "" ? input.slug.trim() : slugify(input.title);
+    if (!slug) throw new BadRequestException("Slug could not be generated. Please provide a manual slug.");
     try {
       const data = await this.prisma.novel.create({ data: {
-        title: input.title, slug: input.slug, authorName: input.authorName, description: input.description ?? "", status: input.status,
+        title: input.title, slug: slug, authorName: input.authorName, description: input.description ?? "", status: input.status,
         isPublished: input.isPublished ?? false, coverAssetId: input.coverAssetId,
         categories: input.categoryIds?.length ? { create: input.categoryIds.map((categoryId) => ({ categoryId })) } : undefined,
         tags: input.tagIds?.length ? { create: input.tagIds.map((tagId) => ({ tagId })) } : undefined
@@ -90,12 +94,22 @@ export class AdminService {
   }
 
   async updateNovel(id: string, input: NovelInputDto, user: AuthenticatedUser) {
-    const exists = await this.prisma.novel.findUnique({ where: { id }, select: { id: true } });
+    const exists = await this.prisma.novel.findUnique({ where: { id }, select: { id: true, title: true } });
     if (!exists) throw new NotFoundException("Novel not found");
     const { categoryIds, tagIds, ...fields } = input;
+    let slug = fields.slug;
+    if (slug !== undefined) {
+      if (slug === null || slug.trim() === "") {
+        const titleToUse = fields.title || exists.title;
+        slug = slugify(titleToUse);
+      } else {
+        slug = slug.trim();
+      }
+    }
     try {
       const data = await this.prisma.novel.update({ where: { id }, data: {
         ...fields,
+        ...(slug !== undefined ? { slug } : {}),
         ...(categoryIds ? { categories: { deleteMany: {}, create: categoryIds.map((categoryId) => ({ categoryId })) } } : {}),
         ...(tagIds ? { tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) } } : {})
       } });
@@ -335,4 +349,20 @@ export class AdminService {
   private invalidate(...namespaces: CacheNamespace[]) {
     return this.cache.invalidate(...namespaces);
   }
+}
+
+function slugify(text: string): string {
+  if (!text) return "";
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đđ]/g, "d")
+    .replace(/[^a-z0-9 -]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "");
 }

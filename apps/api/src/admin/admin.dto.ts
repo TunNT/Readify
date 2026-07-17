@@ -13,7 +13,11 @@ export class AdminListQueryDto {
 
 export class NovelInputDto {
   @IsString() @MinLength(1) @MaxLength(240) @IsOptional() title?: string;
-  @Matches(slugPattern) @MaxLength(240) @IsOptional() slug?: string;
+  @ValidateIf((o) => o.slug !== undefined && o.slug !== "" && o.slug !== null)
+  @Matches(slugPattern)
+  @MaxLength(240)
+  @IsOptional()
+  slug?: string;
   @IsString() @MaxLength(160) @IsOptional() authorName?: string;
   @IsString() @IsOptional() description?: string;
   @IsEnum(NovelStatus) @IsOptional() status?: NovelStatus;
