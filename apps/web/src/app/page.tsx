@@ -18,7 +18,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 function buildCategoryGroups(novels: Novel[]): HomeCategoryGroup[] {
   const bySlug = new Map(novels.map((novel) => [novel.slug, novel]));
-  return homeCategorySource.map((group) => ({ ...group, novels: group.novels.flatMap((slug) => bySlug.get(slug) ?? []) }));
+  return homeCategorySource.map((group) => {
+    const hardcoded = group.novels.flatMap((slug) => bySlug.get(slug) ?? []);
+    const fallback = novels.filter(
+      (novel) =>
+        novel.categories.some((c) => c.slug === group.slug) &&
+        !(group.novels as readonly string[]).includes(novel.slug)
+    );
+    return {
+      ...group,
+      novels: [...hardcoded, ...fallback].slice(0, 5)
+    };
+  });
 }
 
 export default async function HomePage() {
@@ -27,7 +38,9 @@ export default async function HomePage() {
     apiFetch<NovelListResponse>("/novels?page=1&limit=100&sort=chapters")
   ]);
   const novelsBySlug = new Map([...data.recommended, ...catalog.data].map((novel) => [novel.slug, novel]));
-  const recommended = recommendedNovelSlugs.flatMap((slug) => novelsBySlug.get(slug) ?? []);
+  const hardcodedRecommended = recommendedNovelSlugs.flatMap((slug) => novelsBySlug.get(slug) ?? []);
+  const fallbackRecommended = catalog.data.filter((novel) => !(recommendedNovelSlugs as readonly string[]).includes(novel.slug));
+  const recommended = [...hardcodedRecommended, ...fallbackRecommended].slice(0, 12);
   const categoryGroups = buildCategoryGroups(catalog.data);
 
   return (
