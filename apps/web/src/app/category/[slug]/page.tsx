@@ -20,36 +20,39 @@ function orderRomanceNovels(novels: Novel[]) {
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  let novels: Novel[] = [];
+  let categoryName = slug.charAt(0).toUpperCase() + slug.slice(1);
   try {
     const result = slug === "romance"
       ? await apiFetch<NovelListResponse>("/novels?page=1&limit=100&sort=chapters")
       : await apiFetch<NovelListResponse>(`/categories/${encodeURIComponent(slug)}?page=1&limit=100`);
-    const novels = slug === "romance" ? orderRomanceNovels(result.data) : result.data;
-    const fallbackName = result.category?.name ?? slug;
-    const content = categoryContent[slug] ?? {
-      name: fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1),
-      description: `Explore free ${fallbackName} novels and find your next story.`
-    };
-
-    return (
-      <div className={styles.page}>
-        <CategoryHeader />
-        <header className={styles.pageHeader}>
-          <h1><BookOpen size={32} /> {content.name} Novels</h1>
-          <p>{content.description}</p>
-          <span className={styles.novelCount}>{novels.length} Novels</span>
-        </header>
-        <main className={styles.container}>
-          <nav className={styles.breadcrumb} aria-label="Breadcrumb">
-            <Link href="/"><Home size={13} /> Home</Link> › <Link href="/categories">Categories</Link> › {content.name}
-          </nav>
-          <div className={styles.cardsGrid}>{novels.map((novel) => <CategoryCard novel={novel} key={novel.id} />)}</div>
-        </main>
-        <CategoryFooter />
-      </div>
-    );
+    novels = slug === "romance" ? orderRomanceNovels(result.data) : result.data;
+    categoryName = result.category?.name ?? categoryName;
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) notFound();
-    throw error;
+    if (!(error instanceof ApiError && error.status === 404)) {
+      throw error;
+    }
   }
+  const content = categoryContent[slug] ?? {
+    name: categoryName,
+    description: `Explore free ${categoryName} novels and find your next story.`
+  };
+
+  return (
+    <div className={styles.page}>
+      <CategoryHeader />
+      <header className={styles.pageHeader}>
+        <h1><BookOpen size={32} /> {content.name} Novels</h1>
+        <p>{content.description}</p>
+        <span className={styles.novelCount}>{novels.length} Novels</span>
+      </header>
+      <main className={styles.container}>
+        <nav className={styles.breadcrumb} aria-label="Breadcrumb">
+          <Link href="/"><Home size={13} /> Home</Link> › <Link href="/categories">Categories</Link> › {content.name}
+        </nav>
+        <div className={styles.cardsGrid}>{novels.map((novel) => <CategoryCard novel={novel} key={novel.id} />)}</div>
+      </main>
+      <CategoryFooter />
+    </div>
+  );
 }
