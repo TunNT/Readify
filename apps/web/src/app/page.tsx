@@ -4,10 +4,10 @@ import { HomeHeader } from "../components/home/home-header";
 import { HomeHistory } from "../components/home/home-history";
 import { HomeNovelCard } from "../components/home/home-novel-card";
 import { HomeSidebar } from "../components/home/home-sidebar";
-import { homeCategorySource, recommendedNovelSlugs } from "../components/home/home-source";
+import { recommendedNovelSlugs } from "../components/home/home-source";
 import styles from "../components/home/home.module.css";
 import { apiFetch } from "../lib/api";
-import type { HomeResponse, Novel, NovelListResponse } from "../lib/types";
+import type { Category, HomeResponse, Novel, NovelListResponse } from "../lib/types";
 import { getSiteSettings, pageMetadata } from "../lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -16,20 +16,16 @@ export async function generateMetadata(): Promise<Metadata> {
   return { ...metadata, title: { absolute: settings.seoTitle } };
 }
 
-function buildCategoryGroups(novels: Novel[]): HomeCategoryGroup[] {
-  const bySlug = new Map(novels.map((novel) => [novel.slug, novel]));
-  return homeCategorySource.map((group) => {
-    const hardcoded = group.novels.flatMap((slug) => bySlug.get(slug) ?? []);
-    const fallback = novels.filter(
-      (novel) =>
-        novel.categories.some((c) => c.slug === group.slug) &&
-        !(group.novels as readonly string[]).includes(novel.slug)
-    );
-    return {
-      ...group,
-      novels: [...hardcoded, ...fallback].slice(0, 5)
-    };
-  });
+function buildCategoryGroups(novels: Novel[], dbCategories: Category[]): HomeCategoryGroup[] {
+  return dbCategories
+    .filter((cat) => cat.novelCount && cat.novelCount > 0)
+    .map((cat) => ({
+      slug: cat.slug,
+      name: cat.name,
+      novels: novels
+        .filter((novel) => novel.categories.some((c) => c.slug === cat.slug))
+        .slice(0, 5)
+    }));
 }
 
 export default async function HomePage() {
@@ -41,7 +37,7 @@ export default async function HomePage() {
   const hardcodedRecommended = recommendedNovelSlugs.flatMap((slug) => novelsBySlug.get(slug) ?? []);
   const fallbackRecommended = catalog.data.filter((novel) => !(recommendedNovelSlugs as readonly string[]).includes(novel.slug));
   const recommended = [...hardcodedRecommended, ...fallbackRecommended].slice(0, 12);
-  const categoryGroups = buildCategoryGroups(catalog.data);
+  const categoryGroups = buildCategoryGroups(catalog.data, data.categories);
 
   return (
     <div className={styles.page}>
