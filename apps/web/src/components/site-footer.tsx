@@ -2,8 +2,8 @@ import Link from "next/link";
 import { SiteBrand, SiteName } from "./site-settings";
 
 const footerGroups = [
-  { title: "Quick Links", links: [["About Us", "/about"], ["Contact", "/contact"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"]] },
-  { title: "Support", links: [["Help Center", "/help"], ["FAQ", "/faq"], ["Feedback", "/feedback"], ["Report Issue", "/report"]] },
+  { title: "Quick Links", links: [["About Us", "#"], ["Contact", "#"], ["Privacy Policy", "#"], ["Terms of Service", "#"]] },
+  { title: "Support", links: [["Help Center", "#"], ["FAQ", "#"], ["Feedback", "#"], ["Report Issue", "#"]] },
   { title: "Discover", links: [["Romance", "/category/romance"], ["Fantasy", "/category/fantasy"], ["Werewolf", "/category/werewolf"], ["Billionaire", "/category/billionaire"]] }
 ];
 
