@@ -8,8 +8,8 @@ const genres = [
   ["alpha", "Alpha", Crown], ["billionaire", "Billionaire CEO", BriefcaseBusiness], ["contemporary", "Contemporary", Building2]
 ] as const;
 const quickLinks = [
-  ["/about", "About Us", Info], ["/faq", "FAQ", CircleHelp], ["/contact", "Contact", Mail],
-  ["/privacy", "Privacy Policy", Shield], ["/terms", "Terms", FileText]
+  ["#", "About Us", Info], ["#", "FAQ", CircleHelp], ["#", "Contact", Mail],
+  ["#", "Privacy Policy", Shield], ["#", "Terms", FileText]
 ] as const;
 
 export function HomeSidebar({ data }: { data: HomeResponse["data"] }) {
